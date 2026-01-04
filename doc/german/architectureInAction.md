@@ -261,10 +261,10 @@ lässt sich die Komplexität dynamisch fein dosieren und so an unterschiedliche 
 # Referenzen
 
 - **Modellierungsanleitung für aia‑Modelle**  
-  (TODO: Link zum Dokument im GitHub‑Repository, z.B. `docs/aia-modelling-guide.md`)
+  [Modellierungsanleitung](https://github.com/jorgekue/arcInAction/doc/german/modelingInstructions.md)
 
 - **GitHub‑Repository des Programms**  
-  (TODO: Link zum aia‑Viewer auf dem GitHub‑Account, z.B. `https://github.com/<org>/aia-viewer`)
+  [arcInAction](https://github.com/jorgekue/arcInAction)
 
 - **THREE.js**  
   <https://threejs.org/>

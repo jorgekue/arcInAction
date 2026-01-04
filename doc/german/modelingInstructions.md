@@ -2,7 +2,7 @@
 
 > Diese Anleitung beschreibt ausschließlich das **Modellformat** (JSON) für den aiaViewer.
 
-![Viewer zeigt Modell an](viewerWithGrid.gif)
+![Viewer zeigt Modell an](/doc/img/viewerWithGrid.gif)
 Bild: aiaViewer zeigt fiktives Beispiel-Modell an.
 
 ---
