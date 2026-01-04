@@ -1,0 +1,301 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: sans-serif;
+}
+
+#info {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    padding: 5px 8px;
+    font-size: 12px;
+    z-index: 10;
+}
+
+#details {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 12px;
+    max-width: 280px;
+    z-index: 20;
+}
+
+#details b {
+    font-size: 13px;
+}
+
+#controls {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    z-index: 30;
+}
+
+#controls label {
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+/* #dropZone {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+} */
+
+#modelToggle {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    z-index: 30;
+}
+
+#modelToggle button {
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border: 1px solid #666;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+#modelToggle button:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+#modelListPanel {
+    position: absolute;
+    left: 10px;
+    bottom: 40px;
+    z-index: 30;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 12px;
+    padding: 6px 8px;
+    max-height: 200px;
+    max-width: 260px;
+    overflow-y: auto;
+}
+
+#modelListPanel h4 {
+    margin: 0 0 4px 0;
+    font-size: 12px;
+}
+
+#modelListPanel ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#modelListPanel li {
+    cursor: pointer;
+    padding: 2px 4px;
+}
+
+#modelListPanel li:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+#modelListPanel li.active {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+#flow-controls {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    z-index: 0;
+
+    background: rgba(0, 0, 0, 0.5);
+    padding: 6px 10px;
+    border-radius: 4px;
+    color: #fff;
+    font-family: sans-serif;
+    font-size: 12px;
+}
+
+/* #flow-controls button {
+    margin: 0 4px;
+} */
+
+/* Panel für ConnectionGroups */
+#connection-groups-panel {
+    position: absolute;
+    top: 50%;
+    /* vertikal mittig */
+    right: 10px;
+    /* Abstand vom rechten Rand */
+    transform: translateY(-50%);
+    /* exakte Zentrierung bezogen auf eigene Höhe */
+
+    z-index: 10;
+    max-width: 260px;
+
+    background: rgba(0, 0, 0, 0.5);
+    padding: 6px 10px;
+    border-radius: 4px;
+    color: #fff;
+    font-family: sans-serif;
+    font-size: 12px;
+}
+
+/* Titel im Panel */
+#connection-groups-panel .connection-groups-title {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+/* Liste & Einträge */
+#connection-groups-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.connection-group-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.connection-group-row input[type="checkbox"] {
+    margin-right: 4px;
+}
+
+.connection-group-row span {
+    cursor: default;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+/* Ansicht-Panel oben mittig */
+#view-panel {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+
+    background: rgba(0, 0, 0, 0.7);
+    padding: 6px 10px;
+    border-radius: 4px;
+    color: #fff;
+    font-family: sans-serif;
+    font-size: 12px;
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Titel im Panel */
+/* #view-panel .view-panel-title {
+    font-weight: bold;
+    margin-right: 4px;
+} */
+
+/* Checkbox-Item */
+#view-panel .view-panel-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+#view-panel .view-panel-item input[type="checkbox"] {
+    cursor: pointer;
+}
+
+/* Kamera-Button-Gruppe innerhalb des Panels */
+#cameraControls.view-panel-cameras {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Kamera-Buttons */
+#cameraControls button {
+    margin: 0 2px;
+    padding: 2px 6px;
+    font-size: 11px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid #666;
+    color: #fff;
+    cursor: pointer;
+}
+
+#cameraControls button.active {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Info-Button optisch passend */
+.view-panel-button {
+    margin: 0 2px;
+    padding: 2px 6px;
+    font-size: 11px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid #666;
+    color: #fff;
+    cursor: pointer;
+}
+
+/* Overlay und Dialog wie gehabt */
+.aia-impressum-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: none; /* JS setzt 'flex' beim Öffnen */
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.aia-impressum-dialog {
+  background: #ffffff;
+  color: #222;
+  padding: 12px 16px;
+  max-width: 520px;
+  width: 90%;
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+}
+
+.aia-impressum-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.aia-impressum-close {
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.aia-impressum-body p {
+  margin: 6px 0;
+}
+
+.aia-impressum-body hr {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid #ddd;
+}

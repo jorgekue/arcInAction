@@ -261,7 +261,7 @@ lässt sich die Komplexität dynamisch fein dosieren und so an unterschiedliche 
 # Referenzen
 
 - **Modellierungsanleitung für aia‑Modelle**  
-  [Modellierungsanleitung](https://github.com/jorgekue/arcInAction/doc/german/modelingInstructions.md)
+  [Modellierungsanleitung](/doc/german/modelingInstructions.md)
 
 - **GitHub‑Repository des Programms**  
   [arcInAction](https://github.com/jorgekue/arcInAction)

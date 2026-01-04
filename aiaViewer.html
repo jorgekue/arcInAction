@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>architecture in action (aia)</title>
+    <link rel="stylesheet" href="css/viewer.css">
+</head>
+
+<body>
+    <div id="info">
+        Maus: drehen · Mausrad: Zoom · Shift+Maus: verschieben · Klick: Details
+    </div>
+
+    <div id="details">
+        <b>Details</b><br>
+        <span id="details-content">Keine Auswahl</span>
+    </div>
+
+    <div id="controls">
+        <label>
+            Modell laden
+            <input id="fileInput" type="file" accept=".json" style="display:none;">
+        </label>
+    </div>
+
+    <div id="modelToggle">
+        <button id="toggleModelListBtn">Modelle…</button>
+    </div>
+
+    <div id="modelListPanel" style="display:none;"></div>
+
+
+
+    <div id="flow-controls">
+        <button id="btn-flow-prev">Prev</button>
+        <button id="btn-flow-play">Play</button>
+        <button id="btn-flow-stop">Stop</button>
+        <button id="btn-flow-next">Next</button>
+    </div>
+
+    <div id="connection-groups-panel">
+        <div class="connection-groups-title">Connection Groups</div>
+        <div id="connection-groups-list"></div>
+    </div>
+
+    <div id="view-panel">
+        <div id="cameraControls" class="view-panel-cameras">
+            <!-- Buttons per JS einfügen, z.B. Top / Front / Side ... -->
+        </div>
+        <label class="view-panel-item">
+            <input type="checkbox" id="chk-view-grid" />
+            <span>Grid anzeigen</span>
+        </label>
+            <button id="btn-impressum" class="view-panel-button">
+                Info
+            </button>
+    </div>
+
+    <script type="module" src="./js/viewer.js"></script>
+
+    <!-- Overlay für das Impressum / Info -->
+    <div id="impressum-overlay" class="aia-impressum-overlay" style="display: none;">
+        <div class="aia-impressum-dialog">
+            <div class="aia-impressum-header">
+                <span>architecture in action (aia) – Info</span>
+                <button id="btn-impressum-close" class="aia-impressum-close">&times;</button>
+            </div>
+            <div class="aia-impressum-body">
+                <p><strong>Programm:</strong> architecture in action (aia)</p>
+                <p><strong>Version:</strong> 1.0.0 (Prototype)</p>
+                <p><strong>Lizenz:</strong> Apache License, Version 2.0</p>
+
+                <hr>
+
+                <p><strong>Beschreibung:</strong><br>
+                    Demo‑Programm zur 4D‑Visualisierung von Software‑Architekturen (3D‑Komponentenmodell mit animierten
+                    Datenflüssen).</p>
+
+                <p><strong>Technologie‑Stack:</strong><br>
+                    JavaScript, <a href="https://threejs.org/" target="_blank" rel="noopener">THREE.js</a>, WebGL.</p>
+
+                <p><strong>Projekt‑Repository:</strong><br>
+                    <a href="https://github.com/DEIN-ACCOUNT/DEIN-REPO" target="_blank" rel="noopener">
+                        https://github.com/DEIN-ACCOUNT/DEIN-REPO
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+
+</body>
+
+</html>

@@ -1,0 +1,111 @@
+{
+  "layers": [
+    {
+      "name": "Presentation",
+      "z": 5,
+      "components": [
+        {
+          "id": "UI1",
+          "label": "Web\nUI",
+          "type": "frontend",
+          "x": 0,
+          "y": 0,
+          "width": 3,
+          "height": 2,
+          "depth": 1,
+          "metadata": {
+            "owner": "Team Frontend",
+            "version": "1.0.0",
+            "tech": "TypeScript/React",
+            "criticality": "medium"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Business",
+      "z": 2,
+      "components": [
+        {
+          "id": "S1",
+          "label": "Order\nService",
+          "type": "service",
+          "x": 0,
+          "y": 0,
+          "width": 2,
+          "height": 1,
+          "depth": 1,
+          "metadata": {
+            "owner": "Team Backend",
+            "version": "1.0.0",
+            "tech": "Java/JEE",
+            "criticality": "high"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Data",
+      "z": -1,
+      "components": [
+        {
+          "id": "DB1",
+          "label": "Order\nDB",
+          "type": "database",
+          "x": 0,
+          "y": -1,
+          "width": 2.5,
+          "height": 2,
+          "depth": 2,
+          "metadata": {
+            "owner": "DBA Team",
+            "version": "13.0",
+            "tech": "PostgreSQL",
+            "criticality": "high"
+          }
+        }
+      ]
+    }
+  ],
+  "connectionGroups": [
+    {
+      "name": "simple order flow",
+      "order": 1,
+      "active": true,
+      "color": "#4e79a7",
+      "connections": [
+        {
+          "from": "UI1",
+          "to": "S1",
+          "type": "http",
+          "protocol": "REST/HTTPS",
+          "direction": "outbound",
+          "throughput": "120 req/min",
+          "order": 1,
+          "label": "order requests"
+        },
+        {
+          "from": "S1",
+          "to": "DB1",
+          "type": "http",
+          "protocol": "JDBC",
+          "direction": "outbound",
+          "throughput": "80 req/min",
+          "order": 2,
+          "label": "order data"
+        }
+      ]
+    }
+  ],
+  "typeStyles": {
+    "frontend": {
+      "color": "#4e79a7"
+    },
+    "service": {
+      "color": "#59a14f"
+    },
+    "database": {
+      "color": "#e15759"
+    }
+  }
+}
