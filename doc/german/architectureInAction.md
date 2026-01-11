@@ -3,6 +3,16 @@
 > Dieses Dokument beschreibt das Demo‑Programm **architecture in action (aia)** und sein Modellierungsprinzip.  
 > Details zum JSON‑Datenmodell finden sich in der **Modellierungsanleitung**, siehe Referenzen.
 
+# Inhalt
+- [Motivation](#motivation)
+- [Interaktive Sicht auf das Modell](#interaktive-sicht-auf-das-modell)
+- [Deklarativer Modell‑Ansatz](#deklarativer-modell‑ansatz)
+- [Laden der Modelle](#laden-der-modelle)
+- [Definition der Connections und der Datenfluss‑Animation](#definition-der-connections-und-der-datenfluss‑animation)
+- [Reduktion der Modellierungskomplexität mit KI-Unterstützung](#reduktion-der-modellierungskomplexität-mit-ki-unterstützung)
+- [Zusammenfassung und Fazit](#zusammenfassung-und-fazit)
+- [Über den Autor](#über-den-Autor)
+- [Referenzen](#referenzen)
 ---
 
 # Motivation
@@ -285,6 +295,14 @@ Damit dient PlantUML als **kompakte, textuelle Beschreibung**, während der Agen
 Über verschiedene **Kameraperspektiven**, das gezielte Zu‑ und Abschalten von **ConnectionGroups** und **Datenfluss‑Animationen** kann die dargestellte Komplexität fein dosiert und an unterschiedliche Stakeholder angepasst werden – von der Entwicklung bis zum Management.
 
 **KI‑gestützte Agenten** wirken dabei als **Modellierungsassistenz**: Sie automatisieren formale und syntaktische Schritte, sichern Konventionen und Konsistenz und senken die Einstiegshürde, `aia`‑Modelle zu erstellen oder zu pflegen. In Kombination mit **PlantUML** als textuellem Format, einem GitHub‑Agenten als Transformator und dem `aia`‑Viewer als Visualisierung entsteht ein durchgängiger Weg von der textuellen Interaktionsbeschreibung zum 4D‑Modell – bei deutlich reduziertem manuellen Aufwand und besser beherrschbarer Modellierungskomplexität.
+
+---
+
+# Über den Autor
+
+Jürgen Kürpig ist Software Architect bei der adesso insurance solutions und unterstützt seit vielen Jahren java-basierte IT-Projekte in unterschiedlichen Rollen in den Themengebieten Architektur, Integration, Konzepterstellung und Projektmethodik.
+
+Juergen.Kuerpig@adesso-insurance-solutions.de
 
 ---
 
