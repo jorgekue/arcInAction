@@ -1,6 +1,8 @@
 import * as THREE from '../lib/three.module.js';
 import { OrbitControls } from '../lib/OrbitControls.js';
 import * as LABEL from '../js/text-labels.js';
+import { TextGeometry } from '../lib/TextGeometry.js';
+
 
 console.log('Three-Revision:', THREE.REVISION);
 
@@ -103,25 +105,43 @@ function createTextSprite(text) {
     const color = '#ffffff';
     const background = 'rgba(0, 0, 0, 0.7)';
     const padding = 6;
+    const lineHeight = 18;                    // Zeilenhöhe in px
 
+    // Text in Zeilen aufsplitten
+    const lines = String(text).split('\n');
+
+    // Canvas vorbereiten
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
-
     context.font = font;
-    const metrics = context.measureText(text);
-    const textWidth = Math.ceil(metrics.width);
-    const textHeight = 18;
+
+    // Breite = breiteste Zeile, Höhe = Anzahl Zeilen * lineHeight
+    let maxLineWidth = 0;
+    for (const line of lines) {
+        const metrics = context.measureText(line);
+        maxLineWidth = Math.max(maxLineWidth, Math.ceil(metrics.width));
+    }
+
+    const textWidth = maxLineWidth;
+    const textHeight = lineHeight * lines.length;
 
     canvas.width = textWidth + padding * 2;
     canvas.height = textHeight + padding * 2;
 
+    // Hintergrund zeichnen
     context.fillStyle = background;
     context.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Text zeichnen (Zeile für Zeile)
     context.font = font;
     context.fillStyle = color;
-    context.textBaseline = 'middle';
-    context.fillText(text, padding, canvas.height / 2);
+    context.textBaseline = 'top';
+
+    lines.forEach((line, index) => {
+        const x = padding;
+        const y = padding + index * lineHeight;
+        context.fillText(line, x, y);
+    });
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.minFilter = THREE.LinearFilter;
@@ -136,12 +156,13 @@ function createTextSprite(text) {
 
     const sprite = new THREE.Sprite(material);
 
-    const worldHeight = 0.7;                 // vorher z.B. 1.0 oder 3.0
+    const worldHeight = 1.0;                 // vorher z.B. 1.0 oder 3.0
     const aspect = canvas.width / canvas.height;
     sprite.scale.set(worldHeight * aspect, worldHeight, 1);
 
     return sprite;
 }
+
 
 // Datenstrukturen
 const componentCenters = new Map();  // id -> THREE.Vector3
@@ -225,8 +246,7 @@ function createComponents(model) {
 
             let geometry;
             let mesh;
-            // NEU: "person" / "actor"
-            if (c.type === 'person' || c.type === 'actor') {
+            if (c.type === 'actor') {
                 // Spielfigur: Kegel (Körper) + Kugel (Kopf)
                 bodyRadius = (Math.min(width, depth) || 1) / 2;  // Basisradius
                 bodyHeight = height || 1.5;                      // Körperhöhe
@@ -899,15 +919,17 @@ function startDataFlowOnConnection(connObject, options = {}) {
         labelSprite.position.set(0, 0.5, 0);
         flowMesh.add(labelSprite);
     }
+    
+    const pathPointsFlow = Array.from(pathPoints);
     // Für inbound die Reihenfolge umkehren:
     if (conn.direction === 'inbound') {
-        pathPoints.reverse();
+        pathPointsFlow.reverse();
     }
 
     activeFlows.push({
         object3D: flowMesh,
         labelSprite,
-        pathPoints: pathPoints.map(p => p.clone()),
+        pathPoints: pathPointsFlow.map(p => p.clone()),
         duration,
         elapsed: direction === 1 ? 0 : duration,
         loop,
@@ -1183,10 +1205,6 @@ function buildCameraControls() {
 
         container.appendChild(btn);
     });
-    const btn = document.createElement('button');
-        btn.textContent = 'hallo';
-        container.appendChild(btn);
-console.log('hallo', btn);
     updateCameraControlsUI();
 }
 
@@ -1319,7 +1337,7 @@ function animate() {
     const delta = clock.getDelta();
     updateCameraAnimation(delta);
     const hasRunningFlows = updateDataFlows(delta);
-    updateAutoPlay(delta, hasRunningFlows); // NEU
+    updateAutoPlay(delta, hasRunningFlows);
 
     controls.update();
     renderer.render(scene, camera);

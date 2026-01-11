@@ -30,11 +30,19 @@ Das Programm ist in **JavaScript** realisiert und basiert auf der 3D‑Library *
   - Animationen und Interaktionen.
 - Durch die Verwendung von THREE.js lässt sich **aia** leicht als **Web‑Applikation** auf einem geeigneten Server bereitstellen.
 
-> Lizenzhinweis: Das Programm **aia** steht (geplant) unter der **Apache‑Lizenz** (z.B. Apache License, Version 2.0). Die konkrete Lizenzdatei sollte im jeweiligen GitHub‑Repository hinterlegt sein.
+![architecture in action](/doc/img/arcInAction.gif)
+Bild: architecture in action.
 
-**Beispielbild (Platzhalter):**
-
-> _Image_
+Skript der Animation:
+- Konzentration zunächst auf die ConnectionGroup `user registration`
+- Datenfluss der `user registration` per Play-Button ausgelöst.
+- Nun Fokussierung auf die ConnectionGroup `creating orders` und `processing payments`
+- Datenfluss per Play-Button ausgelöst.
+- Per Klick auf DB-Komponente Anzeige der Metadaten oben rechts.
+- Grid an- und ausgeschaltet.
+- Modell wird geändert.
+- Mausinteraktionen: Drehen, verschieben, zoomen
+- Perspektiven ändern: Oben, Front, Iso
 
 ---
 
@@ -48,9 +56,8 @@ Der **aia‑Viewer** bietet eine interaktiv steuerbare 3D‑Ansicht. Über die M
 
 Eine kurze Übersicht zu den Maus‑Interaktionen wird in der linken oberen Ecke des Viewers angezeigt und erleichtert insbesondere neuen Nutzern den Einstieg.
 
-**Beispielausschnitt Interaktionen (Platzhalter):**
-
-> _Image_
+![architecture in action](/doc/img/mouseInteractions.gif)
+Bild: Interaktionen mit der Maus.
 
 Zusätzlich stehen oben mittig Schaltflächen für vordefinierte Kameraperspektiven zur Verfügung:
 
@@ -60,9 +67,8 @@ Zusätzlich stehen oben mittig Schaltflächen für vordefinierte Kameraperspekti
 
 Damit lässt sich die Sicht auf die Architektur schnell an Zielgruppe und Gesprächssituation anpassen – etwa ein Überblick für Fachbereichs‑Stakeholder oder eine technische Detailansicht für Entwickler.
 
-**Beispielausschnitt Perspektiven (Platzhalter):**
-
-> _Image_
+![Vordefinierte Perspektiven](/doc/img/perspectives.gif)
+Bild: Vordefinierte Perspektiven.
 
 ---
 
@@ -77,6 +83,8 @@ Anstatt die Architektur in einem Tool „zusammenzuklicken“, wird sie in einer
 
 - **Single Source of Truth** für die Darstellung,
 - potentieller **Export‑/Import‑Punkt** in andere Werkzeuge.
+
+Dieses Konzept des deklarativen Ansatzes mag der eine oder andere vielleicht aus der Erstellung von Sequenzdiagrammen mit dem Tool plantuml kennen, Referenz dazu siehe unten.
 
 ## Layer und Komponenten (Überblick)
 
@@ -118,9 +126,8 @@ Zur Hilfestellung bei der Modellierung kann ein **Grid** eingeblendet werden (Ch
 - Das Grid erleichtert das **Ausrichten** und **Abmessen** von Komponenten.
 - Für Modellierungs‑Workshops oder Live‑Refactorings lässt sich das Grid schnell ein‑ oder ausblenden.
 
-**Beispielbild zur Modellansicht (Platzhalter):**
-
-> _Image_
+![Grid für Modellierung](/doc/img/gridButton.gif)
+Bild: Grid für Modellierung.
 
 ## Perspektive: Interaktiver Modellierungsmodus
 
@@ -140,18 +147,16 @@ Für den Einsatz im Projektkontext kann der aia‑Viewer mit einer **Vorauswahl 
 - Diese Modelle werden gemeinsam mit dem Viewer bereitgestellt.
 - Sie sind dann **links unten** im Viewer über eine Auswahl (z.B. Dropdown, Liste) wählbar.
 
-**Beispielausschnitt Modell‑Auswahl(Platzhalter):**
-
-> _Image_
+![Vorauswahl Modelle](/doc/img/predefinedModels.gif)
+Bild: Vorauswahl Modelle.
 
 Zusätzlich können Benutzer eigene Modelle dynamisch laden:
 
 - Über den Button **„Laden Modell“** (rechts unten) kann ein loka­les JSON‑Modell ausgewählt werden.
 - So lassen sich unterschiedliche Architekturvarianten oder Projektstände einfach im Browser betrachten – ohne Anpassung am Viewer selbst.
 
-**Beispielausschnitt Laden Modell (Platzhalter):**
-
-> _Image_
+![Individuelle Modelle laden](/doc/img/loadModel.gif)
+Bild: Individuelle Modelle laden.
 
 ---
 
@@ -173,9 +178,8 @@ Pro ConnectionGroup werden u.a. definiert:
 - die Information, ob die Gruppe beim Laden des Modells initial **aktiv** sein soll (`active`),
 - optional eine **Farbe**, die für alle Verbindungen dieser Gruppe verwendet wird.
 
-**Beispielausschnitt ConnectionGroups‑Menü (Platzhalter):**
-
-> _Image_
+![Connections Groups](/doc/img/ConnectionGroups.gif)
+Bild: Connections Groups.
 
 ## Connections: Richtung und Verlauf
 
@@ -226,35 +230,51 @@ Die Animation wird über das Schalterfeld **unten mittig** gesteuert:
 - **Prev.**  
   Schaltet zurück zur vorherigen Connection.
 
-**Beispielausschnitt Animations‑Steuerung (Platzhalter):**
+![Animations‑Steuerung](/doc/img/animationControls.gif)
+Bild: Animations‑Steuerung.
 
-> _Image_
+---
+# Reduktion der Modellierungskomplexität mit KI-Unterstützung
+
+Mit wachsender Architektur steigt der Aufwand, konsistente aia‑Modelle manuell in JSON zu pflegen. KI‑Werkzeuge können hier helfen, die **Komplexität der Modellierung** deutlich zu reduzieren, ohne auf fachliche Qualität zu verzichten.
+
+## GitHub‑Agenten als Modellierungsassistent
+
+In VS Code können GitHub‑Agenten (z.B. im „Build with Agent Mode“) als spezialisierte **Modellierungsassistenten** eingerichtet werden. Die Idee:
+
+- Im Repository werden **Kontextdateien** gepflegt, z.B.:
+  - ein Style‑Guide für die JSON‑Struktur (`layers`, `components`, `connectionGroups`, `typeStyles`),
+  - eine Mapping‑Beschreibung, wie PlantUML‑Elemente auf aia‑Komponenten abgebildet werden,
+  - eine Modellierungsbeschreibung bzw. dieser Artikel.
+- Ein Agent („aia‑Model‑Agent“) nutzt diese Dateien als **feste Regeln und Beispiele**, um:
+  - aus textuellen Beschreibungen oder
+  - aus PlantUML‑Sequenzdiagrammen  
+  automatisch **aia‑konforme JSON‑Modelle** zu erzeugen.
+
+Routineaufgaben wie das Anlegen von Layern, Standard‑Typen (`frontend`, `service`, `database`), ID‑Schemata (z.B. `UI1`, `S1`, `DB1`) und Metadaten (z.B. „Java/JEE“) übernimmt der Agent. Der Modellierer fokussiert sich stärker auf fachliche Struktur und Beziehungen.
+
+## PlantUML als Ausgangs- und Zwischenformat
+
+Viele Teams nutzen bereits **PlantUML‑Sequenzdiagramme**, um Abläufe zwischen Akteuren, UI, Services und Datenbanken zu beschreiben. Diese Diagramme eignen sich als **Ausgangspunkt und Zwischenstufe** für `aia`‑Modelle:
+
+1. Fachliche Abläufe werden in PlantUML formuliert oder verfeinert.
+2. Ein GitHub‑Agent transformiert das Sequenzdiagramm in ein aia‑JSON‑Modell, indem er:
+   - Teilnehmer (actor, participant, database) passenden Layern und Typen zuordnet,
+   - IDs und Labels gemäß der Modellierungskonventionen erzeugt,
+   - die Nachrichten im Sequenzdiagramm in `connectionGroups` und `connections` überführt.
+3. Das resultierende Modell wird im `aia`‑Viewer geladen und bei Bedarf manuell ergänzt (Layout, weitere Flows, Metadaten).
+
+Damit dient PlantUML als **kompakte, textuelle Beschreibung**, während der Agent die Übersetzung in das detaillierte JSON übernimmt. Änderungen erfolgen primär im Sequenzdiagramm und werden bei Bedarf erneut in ein aktuelles `aia`‑Modell überführt.
 
 ---
 
-# Zusammenfassung
+# Zusammenfassung und Fazit
 
-**architecture in action (aia)** zeigt hier prototypisch einen alternative Ansatz, um Software‑Architektur zu erklären:
+**architecture in action (aia)** zeigt einen alternativen Ansatz, um Software‑Architekturen zu erklären: Architektur wird als **4D‑Modell** (3D + Zeit) visualisiert, kombiniert Elemente aus **Komponenten‑ und Sequenzdiagrammen** in einem Bild und nutzt ein **deklaratives JSON‑Modell** als Grundlage. So lassen sich auch komplexe Zielarchitekturen anschaulich, strukturiert und zielgruppengerecht vermitteln – oft klarer als mit klassischen 2D‑Darstellungen.
 
-- Darstellung von Architektur als **4D‑Modell** (3D + Zeit),
-- Kombination von **Komponenten‑ und Sequenzdiagramm** in einem,
-- Nutzung eines **deklarativen JSON‑Modells** als Basis.
+Über verschiedene **Kameraperspektiven**, das gezielte Zu‑ und Abschalten von **ConnectionGroups** und **Datenfluss‑Animationen** kann die dargestellte Komplexität fein dosiert und an unterschiedliche Stakeholder angepasst werden – von der Entwicklung bis zum Management.
 
-Trotz des prototypischen Charakters kann dieser Ansatz helfen, auch komplexere Zielarchitekturen:
-
-- **anschaulich**,
-- **strukturiert** und
-- **zielgruppengerecht**
-
-zu präsentieren – oft verständlicher und einprägsamer als das klassische 2D‑Standarddarstellungen vermögen.
-
-Über:
-
-- die **Kameraperspektive** (Isometrisch, Oben, Front),
-- das gezielte Zu‑ und Abschalten von **ConnectionGroups**,
-- und die **Datenfluss‑Animation**
-
-lässt sich die Komplexität dynamisch fein dosieren und so an unterschiedliche Stakeholder anpassen – vom Entwickler bis zum Management.
+**KI‑gestützte Agenten** wirken dabei als **Modellierungsassistenz**: Sie automatisieren formale und syntaktische Schritte, sichern Konventionen und Konsistenz und senken die Einstiegshürde, `aia`‑Modelle zu erstellen oder zu pflegen. In Kombination mit **PlantUML** als textuellem Format, einem GitHub‑Agenten als Transformator und dem `aia`‑Viewer als Visualisierung entsteht ein durchgängiger Weg von der textuellen Interaktionsbeschreibung zum 4D‑Modell – bei deutlich reduziertem manuellen Aufwand und besser beherrschbarer Modellierungskomplexität.
 
 ---
 
@@ -268,3 +288,8 @@ lässt sich die Komplexität dynamisch fein dosieren und so an unterschiedliche 
 
 - **THREE.js**  
   <https://threejs.org/>
+
+- **PlantUML: Open-Source-Werkzeug zur textuellen Beschreibung von UML-Diagrammen (u.a. Sequenzdiagramme)**  
+  <https://plantuml.com>
+
+

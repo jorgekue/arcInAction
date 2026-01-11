@@ -13,7 +13,7 @@ export function loadFontAsync() {
   return new Promise((resolve, reject) => {
     const loader = new FontLoader();
     loader.load(
-      './fonts/helvetiker_regular.typeface.json',
+      './fonts/gentilis_regular.typeface.json',
       font => {
         globalFont = font;
         console.log('Font geladen');
