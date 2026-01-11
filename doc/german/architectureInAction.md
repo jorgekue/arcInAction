@@ -196,7 +196,7 @@ Pro ConnectionGroup werden u.a. definiert:
 - die Information, ob die Gruppe beim Laden des Modells initial **aktiv** sein soll (`active`),
 - optional eine **Farbe**, die für alle Verbindungen dieser Gruppe verwendet wird.
 
-![Connections Groups](/doc/img/ConnectionGroups.gif)
+![Connections Groups](/doc/img/connectionGroups.gif)
 
 _Bild: Connections Groups._
 
