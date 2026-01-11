@@ -30,8 +30,11 @@ Das Programm ist in **JavaScript** realisiert und basiert auf der 3D‑Library *
   - Animationen und Interaktionen.
 - Durch die Verwendung von THREE.js lässt sich **aia** leicht als **Web‑Applikation** auf einem geeigneten Server bereitstellen.
 
+Die folgende Animation zeigt einige Features:
+
 ![architecture in action](/doc/img/arcInAction.gif)
-Bild: architecture in action.
+
+_Bild: architecture in action._
 
 Skript der Animation:
 - Konzentration zunächst auf die ConnectionGroup `user registration`
@@ -56,8 +59,9 @@ Der **aia‑Viewer** bietet eine interaktiv steuerbare 3D‑Ansicht. Über die M
 
 Eine kurze Übersicht zu den Maus‑Interaktionen wird in der linken oberen Ecke des Viewers angezeigt und erleichtert insbesondere neuen Nutzern den Einstieg.
 
-![architecture in action](/doc/img/mouseInteractions.gif)
-Bild: Interaktionen mit der Maus.
+![mouse interactions](/doc/img/mouseInteractions.gif)
+
+_Bild: Interaktionen mit der Maus._
 
 Zusätzlich stehen oben mittig Schaltflächen für vordefinierte Kameraperspektiven zur Verfügung:
 
@@ -68,7 +72,8 @@ Zusätzlich stehen oben mittig Schaltflächen für vordefinierte Kameraperspekti
 Damit lässt sich die Sicht auf die Architektur schnell an Zielgruppe und Gesprächssituation anpassen – etwa ein Überblick für Fachbereichs‑Stakeholder oder eine technische Detailansicht für Entwickler.
 
 ![Vordefinierte Perspektiven](/doc/img/perspectives.gif)
-Bild: Vordefinierte Perspektiven.
+
+_Bild: Vordefinierte Perspektiven._
 
 ---
 
@@ -127,7 +132,8 @@ Zur Hilfestellung bei der Modellierung kann ein **Grid** eingeblendet werden (Ch
 - Für Modellierungs‑Workshops oder Live‑Refactorings lässt sich das Grid schnell ein‑ oder ausblenden.
 
 ![Grid für Modellierung](/doc/img/gridButton.gif)
-Bild: Grid für Modellierung.
+
+_Bild: Grid für Modellierung._
 
 ## Perspektive: Interaktiver Modellierungsmodus
 
@@ -148,7 +154,8 @@ Für den Einsatz im Projektkontext kann der aia‑Viewer mit einer **Vorauswahl 
 - Sie sind dann **links unten** im Viewer über eine Auswahl (z.B. Dropdown, Liste) wählbar.
 
 ![Vorauswahl Modelle](/doc/img/predefinedModels.gif)
-Bild: Vorauswahl Modelle.
+
+_Bild: Vorauswahl Modelle._
 
 Zusätzlich können Benutzer eigene Modelle dynamisch laden:
 
@@ -156,7 +163,8 @@ Zusätzlich können Benutzer eigene Modelle dynamisch laden:
 - So lassen sich unterschiedliche Architekturvarianten oder Projektstände einfach im Browser betrachten – ohne Anpassung am Viewer selbst.
 
 ![Individuelle Modelle laden](/doc/img/loadModel.gif)
-Bild: Individuelle Modelle laden.
+
+_Bild: Individuelle Modelle laden._
 
 ---
 
@@ -179,7 +187,8 @@ Pro ConnectionGroup werden u.a. definiert:
 - optional eine **Farbe**, die für alle Verbindungen dieser Gruppe verwendet wird.
 
 ![Connections Groups](/doc/img/ConnectionGroups.gif)
-Bild: Connections Groups.
+
+_Bild: Connections Groups._
 
 ## Connections: Richtung und Verlauf
 
@@ -230,8 +239,9 @@ Die Animation wird über das Schalterfeld **unten mittig** gesteuert:
 - **Prev.**  
   Schaltet zurück zur vorherigen Connection.
 
-![Animations‑Steuerung](/doc/img/animationControls.gif)
-Bild: Animations‑Steuerung.
+![Animationssteuerung](/doc/img/animationControls.gif)
+
+_Bild: Animations‑Steuerung._
 
 ---
 # Reduktion der Modellierungskomplexität mit KI-Unterstützung
