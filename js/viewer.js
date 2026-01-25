@@ -1,35 +1,64 @@
+/**
+ * @module viewer
+ * @description Main viewer application for 3D/4D architecture visualization.
+ * Handles scene setup, component rendering, connection visualization,
+ * data flow animations, and user interactions.
+ */
+
 import * as THREE from '../lib/three.module.js';
 import { OrbitControls } from '../lib/OrbitControls.js';
 import * as LABEL from '../js/text-labels.js';
 import { TextGeometry } from '../lib/TextGeometry.js';
 
+// ============================================================================
+// Constants and Configuration
+// ============================================================================
 
 console.log('Three-Revision:', THREE.REVISION);
 
-const activeFlows = []; // laufende Datenfluss-Animationen
+/** @type {Array<Object>} Currently active data flow animations */
+const activeFlows = [];
 
-let connectionGroups = [];      // aus dem Modell geparst
-let connectionSequence = [];    // geordnete Liste der Verbindungs-Objekte (Lines)
+/** @type {Array<Object>} Connection groups parsed from the model */
+let connectionGroups = [];
+
+/** @type {Array<THREE.Line>} Ordered list of connection line objects for animation sequence */
+let connectionSequence = [];
+
+/** @type {number} Current index in the connection sequence for animation playback */
 let currentConnectionIndex = 0;
+
+/** @type {THREE.GridHelper|null} Grid helper for spatial reference */
 let gridHelper = null;
 
+/** @type {Object} Controller for data flow animation playback */
 const flowController = {
-    isPlaying: false,             // Auto-Play-Modus (läuft über alle Connections)
-    mode: 'auto',                 // 'auto' oder 'step' (optional)
-    defaultDuration: 2          // Sekunden pro Verbindung
+    /** @type {boolean} Whether auto-play mode is active */
+    isPlaying: false,
+    /** @type {string} Animation mode: 'auto' or 'step' */
+    mode: 'auto',
+    /** @type {number} Default duration in seconds per connection animation */
+    defaultDuration: 2
 };
 
-// --- Statische Liste der Modelldateien im Verzeichnis der viewer.html ---
+/**
+ * Predefined model files available in the viewer.
+ * @type {Array<{name: string, file: string}>}
+ */
 const modelFiles = [
     { name: 'Standardmodell', file: 'model.json' },
     { name: 'Einfaches Modell', file: 'simple-model.json' }
-    // weitere Modelle:
+    // Additional models can be added here:
     // { name: 'XY', file: 'xy.json' }
 ];
 
-let currentModelFile = 'model.json';  // Startmodell
+/** @type {string} Currently loaded model file name */
+let currentModelFile = 'model.json';
 
-// --- Kamera-Presets ---
+/**
+ * Camera view presets for quick navigation.
+ * @type {Array<{id: string, label: string, position: {x: number, y: number, z: number}, target: {x: number, y: number, z: number}}>}
+ */
 const cameraViews = [
     {
         id: 'iso',
@@ -50,44 +79,71 @@ const cameraViews = [
         target: { x: 0, y: 0, z: 0 }
     }
 ];
+/** @type {string} Currently active camera view preset ID */
 let currentCameraViewId = 'iso';
+
+/** @type {Object|null} Current camera animation state */
 let cameraAnimation = null;
 
-// --- Szene / Kamera / Renderer ---
+// ============================================================================
+// Scene Setup: Scene, Camera, Renderer
+// ============================================================================
+
+/** @type {THREE.Scene} Main 3D scene */
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x222222);
 
+/** @type {THREE.PerspectiveCamera} Main camera */
 const camera = new THREE.PerspectiveCamera(
     45, window.innerWidth / window.innerHeight, 0.1, 1000
 );
 camera.position.set(10, 10, 15);
 
+/** @type {THREE.WebGLRenderer} WebGL renderer */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+/** @type {OrbitControls} Camera orbit controls for user interaction */
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
 
-// --- Licht ---
+// ============================================================================
+// Lighting
+// ============================================================================
+
+/** @type {THREE.HemisphereLight} Ambient hemisphere light */
 const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.7);
 hemiLight.position.set(0, 50, 0);
 scene.add(hemiLight);
 
+/** @type {THREE.DirectionalLight} Main directional light */
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(10, 20, 10);
 scene.add(dirLight);
 
-// --- Boden / Grid ---
+// ============================================================================
+// Grid and Spatial Reference
+// ============================================================================
+
 gridHelper = new THREE.GridHelper(50, 50);
 scene.add(gridHelper);
 gridHelper.visible = false;
 
+// ============================================================================
+// Layer and Label Management
+// ============================================================================
+
+/**
+ * Adds text labels for each architectural layer in the model.
+ * @param {Object} model - The model object containing layers
+ * @param {Array<Object>} [model.layers] - Array of layer objects with z and name properties
+ */
 function addLayerLabels(model) {
     const layers = model.layers || [];
-    const y = 0.3;          // gleiche Höhe wie Grid-Labels
-    const x = -18;          // ein Stück links neben dem Zentrum
+    const y = 0.3;          // Same height as grid labels
+    const x = -18;          // Offset to the left of center
 
     layers.forEach(layer => {
         const z = layer.z || 0;
@@ -100,22 +156,28 @@ function addLayerLabels(model) {
 }
 
 
+/**
+ * Creates a 2D text sprite using canvas-based texture.
+ * Used for UI overlays and layer labels.
+ * @param {string} text - Text to display (supports multiline with \n)
+ * @returns {THREE.Sprite} Text sprite object
+ */
 function createTextSprite(text) {
-    const font = '14px Arial';                // kleinere Schrift
+    const font = '14px Arial';                // Font size
     const color = '#ffffff';
     const background = 'rgba(0, 0, 0, 0.7)';
     const padding = 6;
-    const lineHeight = 18;                    // Zeilenhöhe in px
+    const lineHeight = 18;                    // Line height in pixels
 
-    // Text in Zeilen aufsplitten
+    // Split text into lines
     const lines = String(text).split('\n');
 
-    // Canvas vorbereiten
+    // Prepare canvas
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     context.font = font;
 
-    // Breite = breiteste Zeile, Höhe = Anzahl Zeilen * lineHeight
+    // Width = widest line, height = number of lines * lineHeight
     let maxLineWidth = 0;
     for (const line of lines) {
         const metrics = context.measureText(line);
@@ -128,11 +190,11 @@ function createTextSprite(text) {
     canvas.width = textWidth + padding * 2;
     canvas.height = textHeight + padding * 2;
 
-    // Hintergrund zeichnen
+    // Draw background
     context.fillStyle = background;
     context.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Text zeichnen (Zeile für Zeile)
+    // Draw text (line by line)
     context.font = font;
     context.fillStyle = color;
     context.textBaseline = 'top';
@@ -156,7 +218,7 @@ function createTextSprite(text) {
 
     const sprite = new THREE.Sprite(material);
 
-    const worldHeight = 1.0;                 // vorher z.B. 1.0 oder 3.0
+    const worldHeight = 1.0;                 // World space height
     const aspect = canvas.width / canvas.height;
     sprite.scale.set(worldHeight * aspect, worldHeight, 1);
 
@@ -164,14 +226,37 @@ function createTextSprite(text) {
 }
 
 
-// Datenstrukturen
-const componentCenters = new Map();  // id -> THREE.Vector3
-const componentMeshes = new Map();  // id -> { mesh, data }
+// ============================================================================
+// Component Data Structures
+// ============================================================================
 
+/** @type {Map<string, THREE.Vector3>} Map of component IDs to their center positions */
+const componentCenters = new Map();
+
+/** @type {Map<string, {mesh: THREE.Mesh|THREE.Group, data: Object}>} Map of component IDs to mesh and data */
+const componentMeshes = new Map();
+
+/** @type {Object|null} Currently loaded model data */
 let modelData = null;
+
+/** @type {THREE.Mesh|null} Last highlighted mesh */
 let lastHighlight = null;
 
-// --- Hilfsfunktionen Details / Highlight ---
+// ============================================================================
+// Component Details and Highlighting
+// ============================================================================
+
+/**
+ * Displays component details in the UI panel.
+ * @param {Object} component - Component data object
+ * @param {string} [component.label] - Component label
+ * @param {string} [component.id] - Component ID
+ * @param {string} [component.type] - Component type
+ * @param {number} [component.x] - X position
+ * @param {number} [component.y] - Y position
+ * @param {number} [component.layerZ] - Layer Z coordinate
+ * @param {Object} [component.metadata] - Component metadata
+ */
 function showDetails(component) {
     const el = document.getElementById('details-content');
     const meta = component.metadata || {};
@@ -190,11 +275,18 @@ function showDetails(component) {
       `;
 }
 
+/**
+ * Clears the details panel.
+ */
 function clearDetails() {
     const el = document.getElementById('details-content');
     el.innerHTML = 'Keine Auswahl';
 }
 
+/**
+ * Highlights a mesh by setting its emissive color.
+ * @param {THREE.Mesh|THREE.Group} mesh - Mesh to highlight
+ */
 function highlightMesh(mesh) {
     clearHighlight();
     if (mesh.material && 'emissive' in mesh.material) {
@@ -203,6 +295,9 @@ function highlightMesh(mesh) {
     }
 }
 
+/**
+ * Clears the current highlight by resetting emissive color.
+ */
 function clearHighlight() {
     if (lastHighlight && lastHighlight.material && 'emissive' in lastHighlight.material) {
         lastHighlight.material.emissive.set(0x000000);
@@ -210,7 +305,14 @@ function clearHighlight() {
     lastHighlight = null;
 }
 
-// --- Szene leeren (für neues Modell) ---
+// ============================================================================
+// Scene Management
+// ============================================================================
+
+/**
+ * Clears the scene of all components and connections, keeping only lights and grid.
+ * Resets component data structures.
+ */
 function clearScene() {
     const toRemove = [];
     scene.children.forEach(obj => {
@@ -226,7 +328,17 @@ function clearScene() {
     clearHighlight();
 }
 
-// --- Komponenten ---
+// ============================================================================
+// Component Creation
+// ============================================================================
+
+/**
+ * Creates 3D meshes for all components in the model.
+ * Supports multiple component types: boxes, cylinders (databases), queues, schedulers, actors.
+ * @param {Object} model - The model object
+ * @param {Object} [model.typeStyles] - Style definitions per component type
+ * @param {Array<Object>} [model.layers] - Array of layer objects containing components
+ */
 function createComponents(model) {
     const typeStyles = model.typeStyles || {};
     const layers = model.layers || [];
@@ -247,12 +359,12 @@ function createComponents(model) {
             let geometry;
             let mesh;
             if (c.type === 'actor') {
-                // Spielfigur: Kegel (Körper) + Kugel (Kopf)
-                bodyRadius = (Math.min(width, depth) || 1) / 2;  // Basisradius
-                bodyHeight = height || 1.5;                      // Körperhöhe
-                const headRadius = bodyRadius * 0.6;                   // Kopf etwas kleiner
+                // Actor figure: Cone (body) + Sphere (head)
+                bodyRadius = (Math.min(width, depth) || 1) / 2;  // Base radius
+                bodyHeight = height || 1.5;                      // Body height
+                const headRadius = bodyRadius * 0.6;                   // Head slightly smaller
 
-                // Kegel für den Körper (Cone: Radius, Höhe)
+                // Cone for the body (Cone: Radius, Height)
                 const coneGeom = new THREE.ConeGeometry(bodyRadius, bodyHeight, 16);
                 const coneMat = new THREE.MeshPhongMaterial({
                     color: new THREE.Color(colorValue),
@@ -260,28 +372,28 @@ function createComponents(model) {
                 });
                 const cone = new THREE.Mesh(coneGeom, coneMat);
 
-                // Kugel für den Kopf
+                // Sphere for the head
                 const sphereGeom = new THREE.SphereGeometry(headRadius, 16, 16);
                 const sphereMat = new THREE.MeshPhongMaterial({
-                    color: new THREE.Color(colorValue),  // Kopf z.B. weiß
+                    color: new THREE.Color(colorValue),
                     shininess: 30
                 });
                 const head = new THREE.Mesh(sphereGeom, sphereMat);
 
-                // Kegel-Mittelpunkt liegt im Ursprung:
-                // Spitze des Kegels: +bodyHeight/2
-                // Obere Kugeloberfläche soll genau auf der Spitze liegen:
+                // Cone center is at origin:
+                // Cone tip: +bodyHeight/2
+                // Upper sphere surface should align with the tip:
                 // sphereCenterY + headRadius = bodyHeight/2  → sphereCenterY = bodyHeight/2 - headRadius
                 const sphereCenterY = bodyHeight / 2 - headRadius;
                 head.position.y = sphereCenterY;
 
 
-                // Beide in einem Group zusammenfassen
+                // Combine both in a Group
                 const group = new THREE.Group();
                 group.add(cone);
                 group.add(head);
 
-                mesh = group;  // wir setzen "mesh" hier auf die Gruppe
+                mesh = group;  // Set "mesh" to the group
 
             } else {
 
@@ -313,9 +425,9 @@ function createComponents(model) {
                         break;
                     }
                     case 'scheduler': {
-                        // Uhr-Gehäuse: flacher Zylinder
+                        // Clock body: flat cylinder
                         radius = Math.max(width, height) / 2;
-                        const bodyHeight = depth * 0.5; // etwas flacher als height
+                        const bodyHeight = depth * 0.5; // Slightly flatter than height
                         geometry = new THREE.CylinderGeometry(radius, radius, bodyHeight, 32);
                         break;
                     }
@@ -334,14 +446,14 @@ function createComponents(model) {
                 if (c.type === 'scheduler') {
                     const schedulerGroup = new THREE.Group();
 
-                    // Basis-Uhrgehäuse (Zylinder)
+                    // Base clock body (cylinder)
                     const clockBody = mesh;
                     schedulerGroup.add(clockBody);
 
                     const radius = Math.max(width, height) / 2;
                     const bodyHeight = depth * 0.5;
 
-                    // Zifferblatt
+                    // Clock face
                     const faceGeom = new THREE.CylinderGeometry(
                         radius * 0.98,
                         radius * 0.98,
@@ -353,33 +465,33 @@ function createComponents(model) {
                         shininess: 10
                     });
 
-                    // Obere Seite (+Y)
+                    // Top side (+Y)
                     const faceTop = new THREE.Mesh(faceGeom, faceMat);
                     faceTop.position.y = bodyHeight / 2 + (bodyHeight * 0.05);
                     schedulerGroup.add(faceTop);
 
-                    // Untere Seite (-Y)
+                    // Bottom side (-Y)
                     const faceBottom = new THREE.Mesh(faceGeom, faceMat);
                     faceBottom.position.y = -bodyHeight / 2 - (bodyHeight * 0.05);
                     schedulerGroup.add(faceBottom);
 
 
-                    // ---------- ZEIGER: Pivot-Gruppe + versetzte Box ----------
+                    // ---------- HANDS: Pivot group + offset box ----------
 
                     const handThickness = bodyHeight * 0.2;
-                    const hourHandLength = radius * 0.6;   // sichtbare Gesamtlänge
-                    const minuteHandLength = radius * 0.9; // sichtbare Gesamtlänge
+                    const hourHandLength = radius * 0.6;   // Visible total length
+                    const minuteHandLength = radius * 0.9; // Visible total length
 
-                    // Y-Position leicht über dem Zifferblatt
+                    // Y position slightly above clock face
                     const baseHandY = bodyHeight / 2 + bodyHeight * 0.05 + handThickness * 0.5;
 
-                    // --- Stundenzeiger ---
+                    // --- Hour hand ---
 
-                    // Gruppe mit Pivot in der Kreismitte
+                    // Group with pivot at circle center
                     const hourHandGroup = new THREE.Group();
-                    hourHandGroup.position.set(0, baseHandY, 0); // Mittelpunkt der Uhr
+                    hourHandGroup.position.set(0, baseHandY, 0); // Center of clock
 
-                    // Geometrie nur halb so lang
+                    // Geometry only half as long
                     const hourHandGeom = new THREE.BoxGeometry(
                         hourHandLength,
                         handThickness,
@@ -388,33 +500,33 @@ function createComponents(model) {
                     const hourHandMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
                     const hourHandMesh = new THREE.Mesh(hourHandGeom, hourHandMat);
 
-                    // Box so verschieben, dass ihr inneres Ende am Pivot liegt
-                    // → Zeiger geht von x=0 (Pivot) bis x=hourHandLength/2
+                    // Shift box so its inner end is at the pivot
+                    // → Hand extends from x=0 (pivot) to x=hourHandLength/2
                     hourHandMesh.position.set(hourHandLength / 2, 0, 0);
 
                     hourHandGroup.add(hourHandMesh);
                     schedulerGroup.add(hourHandGroup);
 
-                    // Rotation NUR an der Gruppe
-                    // Pivot liegt in der Kreismitte → Zeiger rotiert sauber um die Mitte
-                    hourHandGroup.rotation.y = Math.PI * 0.7; // z.B. 10 Uhr
+                    // Rotation ONLY on the group
+                    // Pivot is at circle center → hand rotates cleanly around center
+                    hourHandGroup.rotation.y = Math.PI * 0.7; // e.g., 10 o'clock
 
-                    // --- Stundenzeiger unten ---
+                    // --- Hour hand bottom ---
 
-                    const hourHandGeomBottom = hourHandGeom; // gleiche Geometrie
+                    const hourHandGeomBottom = hourHandGeom; // Same geometry
                     const hourHandMeshBottom = new THREE.Mesh(hourHandGeomBottom, hourHandMat);
                     hourHandMeshBottom.position.set(hourHandLength / 2, 0, 0);
 
                     const hourHandGroupBottom = new THREE.Group();
-                    hourHandGroupBottom.position.set(0, -baseHandY, 0); // Pivot in Kreismitte (unten)
+                    hourHandGroupBottom.position.set(0, -baseHandY, 0); // Pivot at circle center (bottom)
                     hourHandGroupBottom.add(hourHandMeshBottom);
 
-                    // gleiche Winkelrichtung wie oben
+                    // Same angle direction as top
                     hourHandGroupBottom.rotation.y = Math.PI - Math.PI * 0.7;
 
                     schedulerGroup.add(hourHandGroupBottom);
 
-                    // --- Minutenzeiger ---
+                    // --- Minute hand ---
 
                     const minuteHandGroup = new THREE.Group();
                     minuteHandGroup.position.set(0, baseHandY + handThickness * 0.3, 0);
@@ -427,15 +539,15 @@ function createComponents(model) {
                     const minuteHandMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
                     const minuteHandMesh = new THREE.Mesh(minuteHandGeom, minuteHandMat);
 
-                    // auch hier: inneres Ende am Pivot
+                    // Also here: inner end at pivot
                     minuteHandMesh.position.set(minuteHandLength / 2, 0, 0);
 
                     minuteHandGroup.add(minuteHandMesh);
                     schedulerGroup.add(minuteHandGroup);
 
-                    minuteHandGroup.rotation.y = -Math.PI * 0.2; // z.B. 2 Uhr
+                    minuteHandGroup.rotation.y = -Math.PI * 0.2; // e.g., 2 o'clock
 
-                    // --- Minutenzeiger unten ---
+                    // --- Minute hand bottom ---
 
                     const minuteHandGeomBottom = minuteHandGeom;
                     const minuteHandMeshBottom = new THREE.Mesh(minuteHandGeomBottom, minuteHandMat);
@@ -450,42 +562,42 @@ function createComponents(model) {
                     schedulerGroup.add(minuteHandGroupBottom);
 
 
-                    // ---------- Scheduler-Gruppe als gesamtes Mesh ----------
+                    // ---------- Scheduler group as complete mesh ----------
                     mesh = schedulerGroup;
                 }
 
 
-                // Queue-Ausrichtung: Stirnseiten in X- oder Z-Richtung
+                // Queue orientation: end faces in X or Z direction
                 if (c.type === 'queue') {
-                    const orientation = c.orientation || 'z'; // Default: in Z-Richtung ausrichten
+                    const orientation = c.orientation || 'z'; // Default: orient along Z direction
 
                     if (orientation === 'x') {
-                        // Zylinderachse von Y nach X drehen:
-                        // Achse Y → X: Rotation um Z-Achse um -90° (oder +90°, je nach Vorzugsrichtung)
+                        // Rotate cylinder axis from Y to X:
+                        // Axis Y → X: Rotation around Z axis by -90° (or +90°, depending on preferred direction)
                         mesh.rotation.z = -Math.PI / 2;
                     } else if (orientation === 'z') {
-                        // Zylinderachse von Y nach Z drehen:
-                        // Achse Y → Z: Rotation um X-Achse um +90°
+                        // Rotate cylinder axis from Y to Z:
+                        // Axis Y → Z: Rotation around X axis by +90°
                         mesh.rotation.x = Math.PI / 2;
                     } else {
-                        // 'y' oder unbekannt → Standard (Stirnseiten nach oben/unten)
-                        // nichts tun
+                        // 'y' or unknown → Standard (end faces up/down)
+                        // Do nothing
                     }
                 }
 
-                // Scheduler-Ausrichtung (Uhr)
+                // Scheduler orientation (clock)
                 if (c.type === 'scheduler') {
-                    const orientation = c.orientation || 'y'; // Default: Zifferblatt nach oben
+                    const orientation = c.orientation || 'y'; // Default: clock face up
 
                     if (orientation === 'y') {
-                        // liegend, Zifferblatt nach oben → keine Rotation nötig
+                        // Lying flat, clock face up → no rotation needed
                     } else if (orientation === 'z') {
-                        // Zifferblatt nach vorne (positive Z)
-                        // wir kippen die liegende Uhr um die X-Achse nach vorne
+                        // Clock face forward (positive Z)
+                        // Tilt the flat clock forward around X axis
                         mesh.rotation.x = Math.PI / 2;
                     } else if (orientation === 'x') {
-                        // Zifferblatt nach rechts (positive X)
-                        // liegende Uhr um Z-Achse drehen
+                        // Clock face right (positive X)
+                        // Rotate flat clock around Z axis
                         mesh.rotation.z = Math.PI / 2;
                     }
                 }
@@ -503,7 +615,7 @@ function createComponents(model) {
             }
 
 
-            // Edges nur für Meshes mit Geometry (nicht für Queue, nicht für person/actor)
+            // Edges only for meshes with geometry (not for queue, person, or actor)
             if (c.type !== 'queue' && c.type !== 'person' && c.type !== 'actor' && geometry) {
                 const edgesGeom = new THREE.EdgesGeometry(geometry);
                 const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
@@ -514,7 +626,7 @@ function createComponents(model) {
 
             c.layerZ = z;
 
-            // userData inkl. Maße
+            // userData including dimensions
             mesh.userData = {
                 id: c.id,
                 data: c,
@@ -525,45 +637,45 @@ function createComponents(model) {
 
             scene.add(mesh);
 
-            // Label-Richtung je nach Typ
+            // Label direction depending on type
             let labelDir = new THREE.Vector3(0, 0, 1); // Front
             if (c.type === 'database') {
-                labelDir.set(1, 0, 0); // rechte Seite
+                labelDir.set(1, 0, 0); // Right side
             } else if (c.type === 'person' || c.type === 'actor') {
-                labelDir.set(0, 1, 0); // oben
+                labelDir.set(0, 1, 0); // Top
             }
             else if (c.type === 'scheduler') {
-                // Scheduler-Label auch nach oben
+                // Scheduler label also on top
                 labelDir.set(0, 1, 0);
             }
 
-            // Label an das Mesh anhängen (nicht an scene)
+            // Attach label to mesh (not to scene)
             // addComponentLabel(mesh, c.label || c.id, labelDir);
 
             const labelText = c.label || c.id;
 
             if (labelText && LABEL.globalFont) {
                 if (c.type === 'database') {
-                    // DB-Zylinder (Achse Y):
+                    // DB cylinder (axis Y):
                     LABEL.addTextOnCylinderEnd(mesh, labelText, radius, height, 'y');
                 } else if (c.type === 'queue') {
-                    // Queue als Zylinder in Z-Richtung:
+                    // Queue as cylinder in Z direction:
                     LABEL.addTextOnCylinderEnd(mesh, labelText, radius, depth, 'y');
                 } else if (c.type === 'scheduler') {
-                    // Uhrkörper als Zylinder, z.B. Achse Y, Text oben:
+                    // Clock body as cylinder, e.g., axis Y, text on top:
                     LABEL.addTextOnCylinderEnd(mesh, labelText, radius, depth, 'y');
                 } else if (c.type === 'person' || c.type === 'actor') {
-                    // Person hat coneBody als Hauptkörper:
+                    // Person has coneBody as main body:
                     LABEL.addTextOnConeSide(mesh, labelText, bodyRadius, bodyHeight);
                 } else {
-                    // Box & andere rechteckige:
+                    // Box & other rectangular:
                     LABEL.addTextOnBoxFront(mesh, labelText, width, height, depth);
                 }
             }
 
 
 
-            // Center berechnen (für Verbindungen etc.)
+            // Calculate center (for connections etc.)
             const center = new THREE.Vector3();
             mesh.updateMatrixWorld();
             mesh.getWorldPosition(center);
@@ -625,15 +737,26 @@ function createComponents(model) {
 //     return size.multiplyScalar(0.5);
 // }
 
-// Pfad + Oberflächen-Endpunkt für eine Connection bestimmen
-// - Pfad: Start (Oberfläche from) -> optionale conn.points -> Oberfläche to (mit kleinem Abstand davor)
+// ============================================================================
+// Connection Path Building
+// ============================================================================
+
+/**
+ * Builds the 3D path for a connection between two components.
+ * Path: Start (surface of 'from') -> optional intermediate points -> End (surface of 'to').
+ * @param {Object} conn - Connection object
+ * @param {string} [conn.begin] - Surface point on source component (e.g., 'z+', 'x-', 'y+')
+ * @param {string} [conn.end] - Surface point on target component
+ * @param {Array<Object>} [conn.points] - Optional intermediate points [{x, y, z}, ...]
+ * @param {THREE.Mesh|THREE.Group} fromMesh - Source component mesh
+ * @param {THREE.Mesh|THREE.Group} toMesh - Target component mesh
+ * @returns {{pathPoints: Array<THREE.Vector3>, startSurface: THREE.Vector3, endSurface: THREE.Vector3}} Path data
+ */
 function buildConnectionPath(conn, fromMesh, toMesh) {
     const fromCenter = new THREE.Vector3();
     fromMesh.getWorldPosition(fromCenter);
-    console.log('fromCenter ', fromCenter)
     const toCenter = new THREE.Vector3();
     toMesh.getWorldPosition(toCenter);
-    console.log('fromMesh.userData ', fromMesh.userData)
 
     // Standard-Halbausdehnungen aus userData
     let fromHalf = new THREE.Vector3(
@@ -652,9 +775,8 @@ function buildConnectionPath(conn, fromMesh, toMesh) {
     const begin = conn.begin || 'z-'
     const startSurface = getSurfacePoint(fromCenter, fromMesh.userData, begin);
     pathPoints.push(startSurface);
-    console.log('startSurface ', startSurface)
 
-    // optionale Zwischenpunkte
+    // Optional intermediate points
     if (Array.isArray(conn.points)) {
         conn.points.forEach(p => {
             if (
@@ -674,6 +796,13 @@ function buildConnectionPath(conn, fromMesh, toMesh) {
     return { pathPoints, startSurface, endSurface };
 }
 
+/**
+ * Calculates a surface point on a component based on connection point specification.
+ * @param {THREE.Vector3} center - Center position of the component
+ * @param {Object} userData - Component userData containing width, height, depth
+ * @param {string} conPoint - Connection point specifier ('x+', 'x-', 'y+', 'y-', 'z+', 'z-')
+ * @returns {THREE.Vector3} Surface point position
+ */
 function getSurfacePoint(center, userData, conPoint) {
     let surfacePoint;
     switch (conPoint) {
@@ -712,8 +841,11 @@ function getSurfacePoint(center, userData, conPoint) {
 }
 
 
+/**
+ * Creates visual connections (lines and arrows) between components based on the model.
+ * @param {Object} model - The model object containing connectionGroups or connections
+ */
 function createConnections(model) {
-    // bestehende Connections ggf. vorher aus der Szene entfernen, wenn nötig
 
     const flatGroups = Array.isArray(connectionGroups) && connectionGroups.length > 0
         ? connectionGroups
@@ -764,8 +896,8 @@ function createConnections(model) {
             const dir = endPoint.clone().sub(prevPoint).normalize();
             const segLength = prevPoint.distanceTo(endPoint);
 
-            // Pfeil-Länge: maximal Segmentlänge minus kleiner Sicherheitsabstand
-            let tipGap = 0.02; // Abstand der Pfeilspitze von der Oberfläche
+            // Arrow length: maximum segment length minus small safety gap
+            let tipGap = 0.02; // Distance of arrow tip from surface
 
             const maxArrowLength = Math.max(segLength - tipGap, 0.05); // mind. 0.05, damit er nicht verschwindet
             const arrowLength = Math.min(maxArrowLength, 1.5);
@@ -794,7 +926,7 @@ function createConnections(model) {
         });
     });
 
-    console.log('createConnections: total visual connections', allConnections.length);
+    console.log('Created connections:', allConnections.length);
 
     // danach Sequenz für Animation neu aufbauen
     rebuildConnectionSequence();
@@ -802,12 +934,15 @@ function createConnections(model) {
     updateConnectionVisibilityFromGroups();
 }
 
+/**
+ * Updates visibility of connections based on active/inactive connection groups.
+ */
 function updateConnectionVisibilityFromGroups() {
     if (!Array.isArray(connectionGroups) || connectionGroups.length === 0) {
         return;
     }
 
-    // Map für schnellen Zugriff: groupName -> active
+    // Map for quick access: groupName -> active
     const activeMap = new Map();
     connectionGroups.forEach(g => {
         activeMap.set(g.name || 'Group', !!g.active);
@@ -827,6 +962,10 @@ function updateConnectionVisibilityFromGroups() {
     });
 }
 
+/**
+ * Rebuilds the connection sequence for animation playback.
+ * Orders connections by group order and connection order within groups.
+ */
 function rebuildConnectionSequence() {
     connectionSequence = [];
     currentConnectionIndex = 0;
@@ -837,7 +976,7 @@ function rebuildConnectionSequence() {
         .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     if (activeGroups.length === 0) {
-        console.log('rebuildConnectionSequence: keine aktiven Gruppen');
+        console.log('rebuildConnectionSequence: no active groups');
         return;
     }
 
@@ -849,7 +988,7 @@ function rebuildConnectionSequence() {
         }
     });
 
-    // 3. Für jede aktive Group und deren Connections die passende Line finden
+    // 3. For each active group and its connections, find the matching line
     activeGroups.forEach(group => {
         // innerhalb der Group nach order sortieren
         const conns = group.connections.slice().sort((a, b) => {
@@ -872,29 +1011,39 @@ function rebuildConnectionSequence() {
             if (line) {
                 connectionSequence.push(line);
             } else {
-                console.warn('Keine Line für Connection in Group', group.name, conn);
+                console.warn('No line found for connection in group', group.name, conn);
             }
         });
     });
 
-    console.log('rebuildConnectionSequence: Sequenzlänge', connectionSequence.length);
+    console.log('rebuildConnectionSequence: sequence length', connectionSequence.length);
 }
 
-// --- Datenfluss-Animation starten ---
+// ============================================================================
+// Data Flow Animation
+// ============================================================================
+
+/**
+ * Starts a data flow animation along a connection path.
+ * Creates an animated sphere that moves along the connection line.
+ * @param {THREE.Line|THREE.ArrowHelper} connObject - Connection line or arrow object
+ * @param {Object} [options] - Animation options
+ * @param {number} [options.duration] - Animation duration in seconds (overrides model/default)
+ * @param {boolean} [options.loop=false] - Whether to loop the animation
+ * @param {number} [options.direction=1] - Animation direction (1 = forward, -1 = backward)
+ */
 function startDataFlowOnConnection(connObject, options = {}) {
     const pathPoints = (connObject.userData && connObject.userData.pathPoints) || null;
     const conn = connObject.userData && connObject.userData.connection;
 
     if (!pathPoints || pathPoints.length < 2) {
-        console.warn('Keine pathPoints für Connection, Animation nicht möglich');
+        console.warn('No pathPoints for connection, animation not possible');
         return;
     }
 
     const modelDuration = conn && conn.flowDuration;
-    console.log('Connection flowDuration:', modelDuration);
     const baseDuration = modelDuration != null ? modelDuration : flowController.defaultDuration;
     const duration = options.duration != null ? options.duration : baseDuration;
-    console.log('Using flow duration:', duration);
     const loop = options.loop ?? false;
     const direction = options.direction || 1;
 
@@ -921,7 +1070,7 @@ function startDataFlowOnConnection(connObject, options = {}) {
     }
     
     const pathPointsFlow = Array.from(pathPoints);
-    // Für inbound die Reihenfolge umkehren:
+    // Reverse order for inbound connections
     if (conn.direction === 'inbound') {
         pathPointsFlow.reverse();
     }
@@ -937,19 +1086,34 @@ function startDataFlowOnConnection(connObject, options = {}) {
     });
 }
 
-// --- Modell aus Objekt laden ---
+// ============================================================================
+// Model Loading
+// ============================================================================
+
+/**
+ * Loads a model from a JavaScript object.
+ * Clears the current scene and creates all components and connections.
+ * @param {Object} model - Model object with layers, connectionGroups, etc.
+ */
 function loadModelFromObject(model) {
     clearScene();
     modelData = model;
     addLayerLabels(model);
     createComponents(model);
-    // connectionGroups aus Modell übernehmen
+    // Get connectionGroups from model
     setupConnectionGroupsFromModel(model);
     createConnections(model);
 }
 
+/**
+ * Sets up connection groups from the model data.
+ * Supports both new structure (connectionGroups array) and legacy structure (flat connections array).
+ * @param {Object} model - Model object
+ * @param {Array<Object>} [model.connectionGroups] - New structure: array of connection groups
+ * @param {Array<Object>} [model.connections] - Legacy structure: flat array of connections
+ */
 function setupConnectionGroupsFromModel(model) {
-    // 1. wenn neue Struktur existiert, nutzen
+    // 1. Use new structure if it exists
     if (Array.isArray(model.connectionGroups) && model.connectionGroups.length > 0) {
         connectionGroups = model.connectionGroups.map((g, index) => ({
             name: g.name || `Group ${index + 1}`,
@@ -959,7 +1123,7 @@ function setupConnectionGroupsFromModel(model) {
             connections: Array.isArray(g.connections) ? g.connections : []
         }));
     } else {
-        // 2. Fallback: alte Struktur -> eine Default-Gruppe bauen
+        // 2. Fallback: old structure -> build a default group
         const flatConnections = Array.isArray(model.connections) ? model.connections : [];
         connectionGroups = [{
             name: 'All Connections',
@@ -969,16 +1133,19 @@ function setupConnectionGroupsFromModel(model) {
         }];
     }
 
-    // Groups nach order sortieren
+    // Sort groups by order
     connectionGroups.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    // UI aktualisieren
+    // Update UI
     buildConnectionGroupsUI();
 }
 
-// --- Modell aus Datei laden ---
+/**
+ * Loads a model from a JSON file via fetch.
+ * @param {string} fileName - Path to the JSON model file
+ * @returns {Promise<void>} Promise that resolves when model is loaded
+ */
 function loadModelFromFile(fileName) {
-    console.log('Lade Modell aus Datei:', fileName);
     currentModelFile = fileName;
 
     return fetch(fileName)
@@ -993,23 +1160,29 @@ function loadModelFromFile(fileName) {
             updateModelListUI();
         })
         .catch(err => {
-            console.error('Fehler beim Laden des Modells:', err);
-            alert('Fehler beim Laden des Modells: ' + fileName);
+            console.error('Error loading model:', err);
+            alert('Error loading model: ' + fileName);
         });
 }
 
-// --- Modell-Liste (Panel) ---
+// ============================================================================
+// UI: Model List
+// ============================================================================
+
+/**
+ * Builds the UI panel for selecting predefined models.
+ */
 function buildModelListUI() {
     const panel = document.getElementById('modelListPanel');
     if (!panel) {
-        console.warn('modelListPanel nicht gefunden');
+        console.warn('modelListPanel not found');
         return;
     }
 
     panel.innerHTML = '';
 
     const title = document.createElement('h4');
-    title.textContent = 'Verfügbare Modelle';
+    title.textContent = 'Available Models';
     panel.appendChild(title);
 
     const ul = document.createElement('ul');
@@ -1031,6 +1204,9 @@ function buildModelListUI() {
     updateModelListUI();
 }
 
+/**
+ * Updates the model list UI to highlight the currently active model.
+ */
 function updateModelListUI() {
     const panel = document.getElementById('modelListPanel');
     if (!panel) return;
@@ -1045,11 +1221,14 @@ function updateModelListUI() {
     });
 }
 
+/**
+ * Initializes the toggle button for showing/hiding the model list panel.
+ */
 function initModelListToggle() {
     const btn = document.getElementById('toggleModelListBtn');
     const panel = document.getElementById('modelListPanel');
     if (!btn || !panel) {
-        console.warn('ModelList-Toggle-Elemente nicht gefunden');
+        console.warn('ModelList toggle elements not found');
         return;
     }
 
@@ -1069,6 +1248,10 @@ function initModelListToggle() {
 }
 
 
+/**
+ * Initializes the info/impressum dialog overlay.
+ * Handles opening, closing, and keyboard (ESC) interactions.
+ */
 function initImpressumDialog() {
   const btnImpressum = document.getElementById('btn-impressum');
   const overlay = document.getElementById('impressum-overlay');
@@ -1089,14 +1272,14 @@ function initImpressumDialog() {
   btnImpressum.addEventListener('click', open);
   btnClose.addEventListener('click', close);
 
-  // Klick auf den halbtransparenten Hintergrund schließt den Dialog
+  // Click on semi-transparent background closes dialog
   overlay.addEventListener('click', (ev) => {
     if (ev.target === overlay) {
       close();
     }
   });
 
-  // ESC-Taste schließt den Dialog
+  // ESC key closes dialog
   window.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape' && overlay.style.display !== 'none') {
       close();
@@ -1106,6 +1289,9 @@ function initImpressumDialog() {
 
 
 
+/**
+ * Initializes the data flow control buttons (Play, Stop, Prev, Next).
+ */
 function initFlowControls() {
     const btnPrev = document.getElementById('btn-flow-prev');
     const btnPlay = document.getElementById('btn-flow-play');
@@ -1113,7 +1299,7 @@ function initFlowControls() {
     const btnNext = document.getElementById('btn-flow-next');
 
     if (!btnPrev || !btnPlay || !btnStop || !btnNext) {
-        console.warn('Flow-Control-Buttons nicht gefunden');
+        console.warn('Flow control buttons not found');
         return;
     }
 
@@ -1122,7 +1308,7 @@ function initFlowControls() {
     });
 
     btnPlay.addEventListener('click', () => {
-        // wenn am Ende → von vorne
+        // If at end, restart from beginning
         if (currentConnectionIndex >= connectionSequence.length) {
             currentConnectionIndex = 0;
         }
@@ -1141,6 +1327,9 @@ function initFlowControls() {
     updateFlowControlButtons();
 }
 
+/**
+ * Initializes the view panel controls (grid toggle, etc.).
+ */
 function initViewPanel() {
     const chkGrid = document.getElementById('chk-view-grid');
     if (!chkGrid) {
@@ -1154,7 +1343,6 @@ function initViewPanel() {
 
     chkGrid.addEventListener('change', () => {
         const visible = chkGrid.checked;
-        console.log('Grid visibility changed:', visible);
 
         if (gridHelper) {
             gridHelper.visible = visible;
@@ -1168,6 +1356,9 @@ function initViewPanel() {
     });
 }
 
+/**
+ * Updates the enabled/disabled state of flow control buttons based on playback state.
+ */
 function updateFlowControlButtons() {
     const btnPlay = document.getElementById('btn-flow-play');
     const btnStop = document.getElementById('btn-flow-stop');
@@ -1184,15 +1375,21 @@ function updateFlowControlButtons() {
 }
 
 
-// --- Kamera-UI ---
+// ============================================================================
+// Camera Controls
+// ============================================================================
+
+/**
+ * Builds the camera control buttons for switching between preset views.
+ */
 function buildCameraControls() {
     const container = document.getElementById('cameraControls');
     if (!container) {
-        console.warn('cameraControls-Container nicht gefunden');
+        console.warn('cameraControls container not found');
         return;
     }
 
-    container.innerHTML = 'Ansicht: ';
+    container.innerHTML = 'View: ';
 
     cameraViews.forEach(view => {
         const btn = document.createElement('button');
@@ -1208,6 +1405,9 @@ function buildCameraControls() {
     updateCameraControlsUI();
 }
 
+/**
+ * Updates the camera control buttons to highlight the active view.
+ */
 function updateCameraControlsUI() {
     const container = document.getElementById('cameraControls');
     if (!container) return;
@@ -1222,10 +1422,15 @@ function updateCameraControlsUI() {
     });
 }
 
+/**
+ * Sets the camera to a predefined view position.
+ * @param {string} viewId - ID of the camera view preset ('iso', 'top', 'front')
+ * @param {boolean} [animate=true] - Whether to animate the camera movement
+ */
 function setCameraView(viewId, animate = true) {
     const view = cameraViews.find(v => v.id === viewId);
     if (!view) {
-        console.warn('Unbekannte Kameraansicht:', viewId);
+        console.warn('Unknown camera view:', viewId);
         return;
     }
 
@@ -1254,12 +1459,23 @@ function setCameraView(viewId, animate = true) {
     };
 }
 
-// --- Interaktion: Klick ---
+// ============================================================================
+// User Interaction: Mouse Click
+// ============================================================================
+
+/** @type {THREE.Raycaster} Raycaster for mouse picking */
 const raycaster = new THREE.Raycaster();
+
+/** @type {THREE.Vector2} Mouse position in normalized device coordinates */
 const mouse = new THREE.Vector2();
 
 renderer.domElement.addEventListener('click', onClick, false);
 
+/**
+ * Handles mouse click events on the 3D scene.
+ * Supports clicking on components (shows details) and connections (starts animation).
+ * @param {MouseEvent} event - Mouse click event
+ */
 function onClick(event) {
     const rect = renderer.domElement.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1302,6 +1518,11 @@ function onClick(event) {
     clearHighlight();
 }
 
+/**
+ * Finds the component mesh by traversing up the object hierarchy.
+ * @param {THREE.Object3D} obj - Object to start search from
+ * @returns {THREE.Mesh|THREE.Group|null} Component mesh if found, null otherwise
+ */
 function findComponentMesh(obj) {
     let current = obj;
     while (current && !current.userData?.data && current.parent) {
@@ -1310,9 +1531,17 @@ function findComponentMesh(obj) {
     return current && current.userData?.data ? current : null;
 }
 
-// --- Animation ---
+// ============================================================================
+// Animation Loop
+// ============================================================================
+
+/** @type {THREE.Clock} Clock for animation timing */
 const clock = new THREE.Clock();
 
+/**
+ * Updates camera animation if one is in progress.
+ * @param {number} delta - Time delta since last frame
+ */
 function updateCameraAnimation(delta) {
     if (!cameraAnimation) return;
 
@@ -1331,6 +1560,10 @@ function updateCameraAnimation(delta) {
     }
 }
 
+/**
+ * Main animation loop.
+ * Updates camera animations, data flows, auto-play, and renders the scene.
+ */
 function animate() {
     requestAnimationFrame(animate);
 
@@ -1343,8 +1576,10 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+// ============================================================================
+// Window Resize Handler
+// ============================================================================
 
-// --- Resize ---
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -1369,7 +1604,10 @@ loadModelFromFile(currentModelFile).finally(() => {
 });
 
 
-// --- File-Input (Modell laden) ---
+// ============================================================================
+// File Input: Load Custom Model
+// ============================================================================
+
 const fileInput = document.getElementById('fileInput');
 fileInput.addEventListener('change', event => {
     const file = event.target.files[0];
@@ -1381,13 +1619,18 @@ fileInput.addEventListener('change', event => {
             const json = JSON.parse(e.target.result);
             loadModelFromObject(json);
         } catch (err) {
-            console.error('Fehler beim Parsen der JSON-Datei:', err);
-            alert('Die Datei ist keine gültige JSON-Modelldatei.');
+            console.error('Error parsing JSON file:', err);
+            alert('The file is not a valid JSON model file.');
         }
     };
     reader.readAsText(file);
 });
 
+/**
+ * Updates all active data flow animations.
+ * @param {number} delta - Time delta since last frame
+ * @returns {boolean} Whether any flows are still running
+ */
 function updateDataFlows(delta) {
     let anyRunning = false;
 
@@ -1400,7 +1643,7 @@ function updateDataFlows(delta) {
         // Loop-Handling
         if (!flow.loop && (tRaw > 1 || tRaw < 0)) {
             // Animation fertig -> Objekte entfernen
-            scene.remove(flow.object3D);   // labelSprite hängt an object3D
+            scene.remove(flow.object3D);   // labelSprite is attached to object3D
             activeFlows.splice(i, 1);
             continue;
         }
@@ -1421,12 +1664,19 @@ function updateDataFlows(delta) {
     return anyRunning;
 }
 
+/**
+ * Calculates a point along a path at a given parameter t (0 to 1).
+ * Uses distance-based interpolation for smooth movement along multi-segment paths.
+ * @param {Array<THREE.Vector3>} points - Array of path points
+ * @param {number} t - Parameter from 0 (start) to 1 (end)
+ * @returns {THREE.Vector3} Interpolated point on the path
+ */
 function getPointOnPath(points, t) {
     if (points.length === 1) return points[0].clone();
     if (t <= 0) return points[0].clone();
     if (t >= 1) return points[points.length - 1].clone();
 
-    // Gesamt-Länge des Pfades berechnen
+    // Calculate total path length
     let totalLength = 0;
     const segmentLengths = [];
 
@@ -1455,13 +1705,18 @@ function getPointOnPath(points, t) {
 }
 
 
+/**
+ * Updates auto-play mode: automatically starts next connection animation when current one finishes.
+ * @param {number} delta - Time delta (unused but kept for consistency)
+ * @param {boolean} hasRunningFlows - Whether any flow animations are currently running
+ */
 function updateAutoPlay(delta, hasRunningFlows) {
     if (!flowController.isPlaying) return;
 
-    // Wenn noch eine Kugel unterwegs ist, nichts tun
+    // If a flow is still running, wait
     if (hasRunningFlows) return;
 
-    // Wenn alle Verbindungen durch sind, stoppen
+    // If all connections are done, stop
     if (currentConnectionIndex >= connectionSequence.length) {
         flowController.isPlaying = false;
         updateFlowControlButtons(); // UI aktualisieren
@@ -1476,6 +1731,9 @@ function updateAutoPlay(delta, hasRunningFlows) {
     currentConnectionIndex++;
 }
 
+/**
+ * Stops and removes all active data flow animations.
+ */
 function stopAllFlows() {
     for (const flow of activeFlows) {
         scene.remove(flow.object3D);
@@ -1490,12 +1748,18 @@ function stopAllFlows() {
 //     updateFlowControlButtons();
 // }
 
+/**
+ * Stops auto-play mode and clears all active flows.
+ */
 function stopAutoPlay() {
     flowController.isPlaying = false;
     stopAllFlows();
     updateFlowControlButtons();
 }
 
+/**
+ * Plays the next connection in the sequence.
+ */
 function playNextStep() {
     stopAllFlows();
     flowController.isPlaying = false;
@@ -1514,13 +1778,16 @@ function playNextStep() {
     currentConnectionIndex++;
 }
 
+/**
+ * Plays the previous connection in the sequence.
+ */
 function playPrevStep() {
     stopAllFlows();
     flowController.isPlaying = false;
 
     if (connectionSequence.length === 0) return;
 
-    // einen zurück, aber nicht kleiner als 0
+    // Go back one, but not less than 0
     currentConnectionIndex = Math.max(currentConnectionIndex - 2, 0);
 
     const connLine = connectionSequence[currentConnectionIndex];
@@ -1531,6 +1798,10 @@ function playPrevStep() {
     currentConnectionIndex++;
 }
 
+/**
+ * Builds the UI for connection group checkboxes.
+ * Allows users to enable/disable groups of connections.
+ */
 function buildConnectionGroupsUI() {
     const container = document.getElementById('connection-groups-list');
     if (!container) {
@@ -1550,11 +1821,10 @@ function buildConnectionGroupsUI() {
 
         checkbox.addEventListener('change', () => {
             group.active = checkbox.checked;
-            console.log('Group toggled', group.name, 'active:', group.active);
-            // 1. Sichtbarkeit der Verbindungen aktualisieren
+            // 1. Update visibility of connections
             updateConnectionVisibilityFromGroups();
 
-            // 2. Playlist für Animation neu aufbauen
+            // 2. Rebuild animation playlist
             rebuildConnectionSequence();
         });
 
