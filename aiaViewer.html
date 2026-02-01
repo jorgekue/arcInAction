@@ -3,20 +3,24 @@
 
 <head>
     <meta charset="UTF-8" />
+    <meta name="description" content="3D/4D visualization tool for software architectures - architecture in action (aia)" />
     <title>architecture in action (aia)</title>
     <link rel="stylesheet" href="css/viewer.css">
 </head>
 
 <body>
+    <!-- Interaction hints (top left) -->
     <div id="info">
         Maus: drehen · Mausrad: Zoom · Shift+Maus: verschieben · Klick: Details
     </div>
 
+    <!-- Component details panel (top right) -->
     <div id="details">
         <b>Details</b><br>
         <span id="details-content">Keine Auswahl</span>
     </div>
 
+    <!-- File input control (bottom right) -->
     <div id="controls">
         <label>
             Modell laden
@@ -24,14 +28,15 @@
         </label>
     </div>
 
+    <!-- Model selection toggle -->
     <div id="modelToggle">
         <button id="toggleModelListBtn">Modelle…</button>
     </div>
 
+    <!-- Model list panel (hidden by default) -->
     <div id="modelListPanel" style="display:none;"></div>
 
-
-
+    <!-- Data flow animation controls -->
     <div id="flow-controls">
         <button id="btn-flow-prev">Prev</button>
         <button id="btn-flow-play">Play</button>
@@ -39,14 +44,16 @@
         <button id="btn-flow-next">Next</button>
     </div>
 
+    <!-- Connection groups panel -->
     <div id="connection-groups-panel">
         <div class="connection-groups-title">Connection Groups</div>
         <div id="connection-groups-list"></div>
     </div>
 
+    <!-- View controls panel -->
     <div id="view-panel">
         <div id="cameraControls" class="view-panel-cameras">
-            <!-- Buttons per JS einfügen, z.B. Top / Front / Side ... -->
+            <!-- Camera view buttons inserted by JavaScript -->
         </div>
         <label class="view-panel-item">
             <input type="checkbox" id="chk-view-grid" />
@@ -57,9 +64,10 @@
             </button>
     </div>
 
+    <!-- Main application script -->
     <script type="module" src="./js/viewer.js"></script>
 
-    <!-- Overlay für das Impressum / Info -->
+    <!-- Info/Impressum overlay dialog -->
     <div id="impressum-overlay" class="aia-impressum-overlay" style="display: none;">
         <div class="aia-impressum-dialog">
             <div class="aia-impressum-header">
