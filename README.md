@@ -92,6 +92,7 @@ arcInAction/
 ├── fonts/                 # Font files for 3D text
 ├── model.json             # Default model file
 ├── simple-model.json      # Simple example model
+├── model-files.properties # Additional predefined models
 ├── doc/
 │   ├── english/          # English documentation
 │   ├── german/           # German documentation
@@ -104,6 +105,26 @@ arcInAction/
 1. **Load a Model**: The viewer automatically loads `model.json` on startup. You can also:
    - Click "Modell laden" (Load Model) to load a custom JSON file
    - Use the "Modelle…" (Models) button to switch between predefined models
+
+### Configure Additional Predefined Models
+
+The default models (`model.json` and `simple-model.json`) stay configured in `js/viewer.js`.
+Additional predefined models can be managed externally in `model-files.properties`.
+This file is optional: if it does not exist, only the default models are shown.
+
+Properties format:
+
+```properties
+model.1.name=My Model
+model.1.file=model/my-model.json
+model.2.name=Another Model
+model.2.file=model/another-model.json
+```
+
+Notes:
+- `name` is the label shown in the model list
+- `file` is the relative path to the model JSON file
+- Entries are loaded in numeric order (`model.1`, `model.2`, ...)
 
 2. **Interact with the 3D Scene**:
    - **Mouse**: Rotate the view

@@ -19,6 +19,9 @@ console.log('Three-Revision:', THREE.REVISION);
 /** @type {Array<Object>} Currently active data flow animations */
 const activeFlows = [];
 
+/** @type {string} Path to external properties file containing additional model definitions */
+const externalModelPropertiesFile = 'model-files.properties';
+
 /** @type {Array<Object>} Connection groups parsed from the model */
 let connectionGroups = [];
 
@@ -27,6 +30,12 @@ let connectionSequence = [];
 
 /** @type {number} Current index in the connection sequence for animation playback */
 let currentConnectionIndex = 0;
+
+/** @type {number} Index of the currently selected/last played connection */
+let currentSelectedConnectionIndex = -1;
+
+/** @type {number} Default color for connections when no group color is defined */
+const defaultConnectionColor = 0xbfbfbf;
 
 /** @type {THREE.GridHelper|null} Grid helper for spatial reference */
 let gridHelper = null;
@@ -38,22 +47,135 @@ const flowController = {
     /** @type {string} Animation mode: 'auto' or 'step' */
     mode: 'auto',
     /** @type {number} Default duration in seconds per connection animation */
-    defaultDuration: 2
+    defaultDuration: 3
+};
+
+/** @type {{flowDurationMin: number, flowSpeed: number}} Global flow timing settings from model.settings */
+const modelFlowTimingSettings = {
+    flowDurationMin: 3,
+    flowSpeed: 2.5
 };
 
 /**
  * Predefined model files available in the viewer.
  * @type {Array<{name: string, file: string}>}
  */
-const modelFiles = [
+const defaultModelFiles = [
     { name: 'Standardmodell', file: 'model.json' },
     { name: 'Einfaches Modell', file: 'simple-model.json' }
-    // Additional models can be added here:
-    // { name: 'XY', file: 'xy.json' }
 ];
+
+/** @type {Array<{name: string, file: string}>} Full list of available models (default + external) */
+const modelFiles = [...defaultModelFiles];
 
 /** @type {string} Currently loaded model file name */
 let currentModelFile = 'model.json';
+
+/**
+ * Parses a .properties text content into key/value pairs.
+ * Supports comments (#, !) and separators '=' or ':'.
+ * @param {string} text - Raw properties text
+ * @returns {Object<string, string>} Parsed key/value map
+ */
+function parseProperties(text) {
+    const properties = {};
+    const lines = text.split(/\r?\n/);
+
+    lines.forEach(rawLine => {
+        const line = rawLine.trim();
+        if (!line || line.startsWith('#') || line.startsWith('!')) {
+            return;
+        }
+
+        const separatorMatch = line.match(/[:=]/);
+        if (!separatorMatch || separatorMatch.index == null) {
+            return;
+        }
+
+        const separatorIndex = separatorMatch.index;
+        const key = line.substring(0, separatorIndex).trim();
+        const value = line.substring(separatorIndex + 1).trim();
+
+        if (key) {
+            properties[key] = value;
+        }
+    });
+
+    return properties;
+}
+
+/**
+ * Parses external model definitions from properties.
+ * Expected format:
+ * model.1.name=My Model
+ * model.1.file=model/my-model.json
+ * @param {string} propertiesText - Raw properties file content
+ * @returns {Array<{name: string, file: string}>} Parsed model entries
+ */
+function parseModelFilesFromProperties(propertiesText) {
+    const properties = parseProperties(propertiesText);
+    const indexedModels = new Map();
+
+    Object.entries(properties).forEach(([key, value]) => {
+        const match = key.match(/^model\.(\d+)\.(name|file)$/i);
+        if (!match) {
+            return;
+        }
+
+        const index = Number(match[1]);
+        const field = match[2].toLowerCase();
+
+        if (!indexedModels.has(index)) {
+            indexedModels.set(index, { name: '', file: '' });
+        }
+
+        indexedModels.get(index)[field] = value;
+    });
+
+    return [...indexedModels.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([, entry]) => ({
+            name: (entry.name || '').trim(),
+            file: (entry.file || '').trim()
+        }))
+        .filter(entry => entry.name && entry.file);
+}
+
+/**
+ * Loads additional model definitions from external properties file.
+ * Keeps default models from viewer.js and appends external unique entries.
+ * @returns {Promise<void>} Promise that resolves after loading/merging external models
+ */
+async function loadAdditionalModelFilesFromProperties() {
+    try {
+        const response = await fetch(externalModelPropertiesFile);
+        if (!response.ok) {
+            return;
+        }
+
+        const propertiesText = await response.text();
+        const externalModels = parseModelFilesFromProperties(propertiesText);
+        if (!externalModels.length) {
+            return;
+        }
+
+        const existingFiles = new Set(modelFiles.map(entry => entry.file));
+        externalModels.forEach(entry => {
+            if (!existingFiles.has(entry.file)) {
+                modelFiles.push(entry);
+                existingFiles.add(entry.file);
+            }
+        });
+
+        const panel = document.getElementById('modelListPanel');
+        if (panel && panel.dataset.initialized) {
+            buildModelListUI();
+        }
+    } catch (err) {
+        // Optional configuration file: ignore fetch/network errors silently.
+        return;
+    }
+}
 
 /**
  * Camera view presets for quick navigation.
@@ -872,7 +994,7 @@ function createConnections(model) {
             const { pathPoints, startSurface, endSurface } = buildConnectionPath(conn, fromMesh, toMesh);
             if (pathPoints.length < 2) return;
 
-            const color = (group.color || 0xffffff);
+            const color = (group.color || defaultConnectionColor);
 
             const lineGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints);
             const lineMaterial = new THREE.LineBasicMaterial({ color });
@@ -884,7 +1006,8 @@ function createConnections(model) {
                 groupName,           // Group-Name merken
                 pathPoints,
                 startSurface,
-                endSurface
+                endSurface,
+                originalColor: color
             };
 
             scene.add(line);
@@ -917,7 +1040,8 @@ function createConnections(model) {
                 groupName,           // Group-Name merken
                 pathPoints,
                 startSurface,
-                endSurface
+                endSurface,
+                originalColor: color
             };
 
             scene.add(arrow);
@@ -960,6 +1084,77 @@ function updateConnectionVisibilityFromGroups() {
             obj.visible = (isActive === undefined) ? true : isActive;
         }
     });
+
+    updateCurrentConnectionMarker();
+}
+
+/**
+ * Determines whether two connection payloads represent the same logical connection.
+ * @param {Object|null|undefined} a - First connection object
+ * @param {Object|null|undefined} b - Second connection object
+ * @returns {boolean} True when both represent same connection
+ */
+function isSameConnection(a, b) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+
+    return a.from === b.from &&
+        a.to === b.to &&
+        (a.order === b.order || a.order == null || b.order == null) &&
+        (a.label === b.label || a.label == null || b.label == null);
+}
+
+/**
+ * Restores base style for connection visuals.
+ * @param {THREE.Object3D} obj - Connection line or arrow
+ */
+function setConnectionSelectionStyle(obj) {
+    if (!obj?.userData) return;
+
+    const originalColor = obj.userData.originalColor ?? defaultConnectionColor;
+
+    if (obj.userData.type === 'connection') {
+        if (obj.material?.color) {
+            obj.material.color.set(originalColor);
+        }
+        if (obj.material) {
+            obj.material.transparent = false;
+            obj.material.opacity = 1;
+            obj.material.needsUpdate = true;
+        }
+        return;
+    }
+
+    if (obj.userData.type === 'connectionArrow') {
+        if (obj.line?.material?.color) {
+            obj.line.material.color.set(originalColor);
+        }
+        if (obj.cone?.material?.color) {
+            obj.cone.material.color.set(originalColor);
+        }
+        if (obj.line?.material) {
+            obj.line.material.transparent = false;
+            obj.line.material.opacity = 1;
+            obj.line.material.needsUpdate = true;
+        }
+        if (obj.cone?.material) {
+            obj.cone.material.transparent = false;
+            obj.cone.material.opacity = 1;
+            obj.cone.material.needsUpdate = true;
+        }
+    }
+}
+
+/**
+ * Updates marker for currently selected connection.
+ */
+function updateCurrentConnectionMarker() {
+    scene.traverse(obj => {
+        if (!obj?.userData) return;
+        if (obj.userData.type !== 'connection' && obj.userData.type !== 'connectionArrow') return;
+
+        setConnectionSelectionStyle(obj);
+    });
 }
 
 /**
@@ -969,6 +1164,7 @@ function updateConnectionVisibilityFromGroups() {
 function rebuildConnectionSequence() {
     connectionSequence = [];
     currentConnectionIndex = 0;
+    currentSelectedConnectionIndex = -1;
 
     // 1. aktive Gruppen nach order sortieren
     const activeGroups = connectionGroups
@@ -977,6 +1173,8 @@ function rebuildConnectionSequence() {
 
     if (activeGroups.length === 0) {
         console.log('rebuildConnectionSequence: no active groups');
+        updateCurrentConnectionMarker();
+        updateFlowControlButtons();
         return;
     }
 
@@ -1017,11 +1215,55 @@ function rebuildConnectionSequence() {
     });
 
     console.log('rebuildConnectionSequence: sequence length', connectionSequence.length);
+    updateCurrentConnectionMarker();
+    updateFlowControlButtons();
 }
 
 // ============================================================================
 // Data Flow Animation
 // ============================================================================
+
+/**
+ * Applies global flow timing settings from model.settings.
+ * Supported settings:
+ * - flowDurationMin: minimum duration in seconds
+ * - flowSpeed: speed in grid units per second
+ * @param {Object} model - Model object
+ */
+function applyFlowTimingSettingsFromModel(model) {
+    modelFlowTimingSettings.flowDurationMin = 3;
+    modelFlowTimingSettings.flowSpeed = 2.5;
+
+    const settings = model && typeof model.settings === 'object' ? model.settings : null;
+    if (!settings) {
+        return;
+    }
+
+    const parsedSettingsDurationMin = Number(settings.flowDurationMin);
+    const parsedSettingsSpeed = Number(settings.flowSpeed);
+
+    if (Number.isFinite(parsedSettingsDurationMin) && parsedSettingsDurationMin > 0) {
+        modelFlowTimingSettings.flowDurationMin = parsedSettingsDurationMin;
+    }
+    if (Number.isFinite(parsedSettingsSpeed) && parsedSettingsSpeed > 0) {
+        modelFlowTimingSettings.flowSpeed = parsedSettingsSpeed;
+    }
+}
+
+/**
+ * Calculates total length of a polyline path.
+ * @param {Array<THREE.Vector3>} points - Path points
+ * @returns {number} Total path length
+ */
+function getPathLength(points) {
+    if (!Array.isArray(points) || points.length < 2) return 0;
+
+    let totalLength = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+        totalLength += points[i].distanceTo(points[i + 1]);
+    }
+    return totalLength;
+}
 
 /**
  * Starts a data flow animation along a connection path.
@@ -1031,6 +1273,12 @@ function rebuildConnectionSequence() {
  * @param {number} [options.duration] - Animation duration in seconds (overrides model/default)
  * @param {boolean} [options.loop=false] - Whether to loop the animation
  * @param {number} [options.direction=1] - Animation direction (1 = forward, -1 = backward)
+ *
+ * Connection timing options:
+ * - options.duration (highest priority)
+ * - connection.flowDuration (overrides global speed/min)
+ * - model.settings.flowSpeed + model.settings.flowDurationMin
+ * - viewer default (3s)
  */
 function startDataFlowOnConnection(connObject, options = {}) {
     const pathPoints = (connObject.userData && connObject.userData.pathPoints) || null;
@@ -1041,9 +1289,23 @@ function startDataFlowOnConnection(connObject, options = {}) {
         return;
     }
 
-    const modelDuration = conn && conn.flowDuration;
-    const baseDuration = modelDuration != null ? modelDuration : flowController.defaultDuration;
-    const duration = options.duration != null ? options.duration : baseDuration;
+    const parsedOptionDuration = Number(options.duration);
+    const parsedConnectionDuration = Number(conn && conn.flowDuration);
+
+    let duration = flowController.defaultDuration;
+
+    if (Number.isFinite(parsedOptionDuration) && parsedOptionDuration > 0) {
+        duration = parsedOptionDuration;
+    } else if (Number.isFinite(parsedConnectionDuration) && parsedConnectionDuration > 0) {
+        duration = parsedConnectionDuration;
+    } else {
+        const pathLength = getPathLength(pathPoints);
+        if (pathLength > 0) {
+            const speedDuration = pathLength / modelFlowTimingSettings.flowSpeed;
+            duration = Math.max(speedDuration, modelFlowTimingSettings.flowDurationMin, 0.05);
+        }
+    }
+
     const loop = options.loop ?? false;
     const direction = options.direction || 1;
 
@@ -1098,6 +1360,7 @@ function startDataFlowOnConnection(connObject, options = {}) {
 function loadModelFromObject(model) {
     clearScene();
     modelData = model;
+    applyFlowTimingSettingsFromModel(model);
     addLayerLabels(model);
     createComponents(model);
     // Get connectionGroups from model
@@ -1118,7 +1381,7 @@ function setupConnectionGroupsFromModel(model) {
         connectionGroups = model.connectionGroups.map((g, index) => ({
             name: g.name || `Group ${index + 1}`,
             order: g.order != null ? g.order : index,
-            color: g.color || 0xffffff,
+            color: g.color || defaultConnectionColor,
             active: g.active !== false, // Default: true
             connections: Array.isArray(g.connections) ? g.connections : []
         }));
@@ -1290,18 +1553,25 @@ function initImpressumDialog() {
 
 
 /**
- * Initializes the data flow control buttons (Play, Stop, Prev, Next).
+ * Initializes the data flow control buttons.
  */
 function initFlowControls() {
+    const btnStart = document.getElementById('btn-flow-start');
     const btnPrev = document.getElementById('btn-flow-prev');
     const btnPlay = document.getElementById('btn-flow-play');
+    const btnReplay = document.getElementById('btn-flow-replay');
     const btnStop = document.getElementById('btn-flow-stop');
     const btnNext = document.getElementById('btn-flow-next');
+    const btnEnd = document.getElementById('btn-flow-end');
 
-    if (!btnPrev || !btnPlay || !btnStop || !btnNext) {
+    if (!btnStart || !btnPrev || !btnPlay || !btnReplay || !btnStop || !btnNext || !btnEnd) {
         console.warn('Flow control buttons not found');
         return;
     }
+
+    btnStart.addEventListener('click', () => {
+        playFromStartStep();
+    });
 
     btnPrev.addEventListener('click', () => {
         playPrevStep();
@@ -1316,12 +1586,20 @@ function initFlowControls() {
         updateFlowControlButtons();
     });
 
+    btnReplay.addEventListener('click', () => {
+        replayCurrentStep();
+    });
+
     btnStop.addEventListener('click', () => {
         stopAutoPlay();
     });
 
     btnNext.addEventListener('click', () => {
         playNextStep();
+    });
+
+    btnEnd.addEventListener('click', () => {
+        playFromEndStep();
     });
 
     updateFlowControlButtons();
@@ -1360,17 +1638,34 @@ function initViewPanel() {
  * Updates the enabled/disabled state of flow control buttons based on playback state.
  */
 function updateFlowControlButtons() {
+    const btnStart = document.getElementById('btn-flow-start');
+    const btnPrev = document.getElementById('btn-flow-prev');
     const btnPlay = document.getElementById('btn-flow-play');
+    const btnReplay = document.getElementById('btn-flow-replay');
     const btnStop = document.getElementById('btn-flow-stop');
+    const btnNext = document.getElementById('btn-flow-next');
+    const btnEnd = document.getElementById('btn-flow-end');
 
-    if (!btnPlay || !btnStop) return;
+    if (!btnStart || !btnPrev || !btnPlay || !btnReplay || !btnStop || !btnNext || !btnEnd) return;
+
+    const hasConnections = connectionSequence.length > 0;
 
     if (flowController.isPlaying) {
         btnPlay.disabled = true;
         btnStop.disabled = false;
+        btnStart.disabled = true;
+        btnPrev.disabled = true;
+        btnReplay.disabled = true;
+        btnNext.disabled = true;
+        btnEnd.disabled = true;
     } else {
-        btnPlay.disabled = false;
+        btnPlay.disabled = !hasConnections;
         btnStop.disabled = true;
+        btnStart.disabled = !hasConnections;
+        btnPrev.disabled = !hasConnections;
+        btnReplay.disabled = !hasConnections || currentSelectedConnectionIndex < 0;
+        btnNext.disabled = !hasConnections;
+        btnEnd.disabled = !hasConnections;
     }
 }
 
@@ -1502,16 +1797,36 @@ function onClick(event) {
 
 
     // 2. Verbindungslinie?
-    if (obj.userData && obj.userData.type === 'connection') {
-        startDataFlowOnConnection(obj, { loop: false });
-        return;
-    }
+    // if (obj.userData && obj.userData.type === 'connection') {
+    //     const sequenceIndex = connectionSequence.findIndex(line => line === obj);
+    //     if (sequenceIndex >= 0) {
+    //         currentSelectedConnectionIndex = sequenceIndex;
+    //         currentConnectionIndex = sequenceIndex + 1;
+    //         updateCurrentConnectionMarker();
+    //         updateFlowControlButtons();
+    //     }
+    //     startDataFlowOnConnection(obj, { loop: false });
+    //     return;
+    // }
 
     // 3. Pfeil?
-    if (obj.userData && obj.userData.type === 'connectionArrow') {
-        startDataFlowOnConnection(obj, { loop: false });
-        return;
-    }
+    // if (obj.userData && obj.userData.type === 'connectionArrow') {
+    //     const sequenceIndex = connectionSequence.findIndex(line => {
+    //         const lineConn = line.userData?.connection;
+    //         const lineGroup = line.userData?.groupName || '';
+    //         const arrowConn = obj.userData?.connection;
+    //         const arrowGroup = obj.userData?.groupName || '';
+    //         return lineGroup === arrowGroup && isSameConnection(lineConn, arrowConn);
+    //     });
+    //     if (sequenceIndex >= 0) {
+    //         currentSelectedConnectionIndex = sequenceIndex;
+    //         currentConnectionIndex = sequenceIndex + 1;
+    //         updateCurrentConnectionMarker();
+    //         updateFlowControlButtons();
+    //     }
+    //     startDataFlowOnConnection(obj, { loop: false });
+    //     return;
+    // }
 
     // sonst
     clearDetails();
@@ -1589,6 +1904,7 @@ window.addEventListener('resize', () => {
 
 await LABEL.loadFontAsync();          // Font laden
 // --- Start: initial model.json laden ---
+await loadAdditionalModelFilesFromProperties();
 initModelListToggle();
 initImpressumDialog();
 buildCameraControls();
@@ -1724,6 +2040,8 @@ function updateAutoPlay(delta, hasRunningFlows) {
     }
 
     const connLine = connectionSequence[currentConnectionIndex];
+    currentSelectedConnectionIndex = currentConnectionIndex;
+    updateCurrentConnectionMarker();
     startDataFlowOnConnection(connLine, {
         loop: false
     });
@@ -1758,44 +2076,143 @@ function stopAutoPlay() {
 }
 
 /**
- * Plays the next connection in the sequence.
+ * Plays a specific connection by index from the active sequence.
+ * @param {number} index - Index in connectionSequence
  */
-function playNextStep() {
+function playConnectionAtIndex(index) {
     stopAllFlows();
     flowController.isPlaying = false;
 
-    if (connectionSequence.length === 0) return;
-
-    if (currentConnectionIndex >= connectionSequence.length) {
-        currentConnectionIndex = connectionSequence.length - 1;
+    if (connectionSequence.length === 0) {
+        currentSelectedConnectionIndex = -1;
+        currentConnectionIndex = 0;
+        updateCurrentConnectionMarker();
+        updateFlowControlButtons();
+        return;
     }
 
-    const connLine = connectionSequence[currentConnectionIndex];
+    const targetIndex = Math.max(0, Math.min(index, connectionSequence.length - 1));
+    const connLine = connectionSequence[targetIndex];
+
     startDataFlowOnConnection(connLine, {
         loop: false
     });
 
-    currentConnectionIndex++;
+    currentSelectedConnectionIndex = targetIndex;
+    currentConnectionIndex = targetIndex + 1;
+    updateCurrentConnectionMarker();
+    updateFlowControlButtons();
+}
+
+/**
+ * Sets the current connection position without starting playback.
+ * @param {number} index - Index in connectionSequence
+ */
+function setCurrentConnectionPosition(index) {
+    stopAllFlows();
+    flowController.isPlaying = false;
+
+    if (connectionSequence.length === 0) {
+        currentSelectedConnectionIndex = -1;
+        currentConnectionIndex = 0;
+        updateCurrentConnectionMarker();
+        updateFlowControlButtons();
+        return;
+    }
+
+    const targetIndex = Math.max(0, Math.min(index, connectionSequence.length - 1));
+    currentSelectedConnectionIndex = targetIndex;
+    currentConnectionIndex = targetIndex + 1;
+    updateCurrentConnectionMarker();
+    updateFlowControlButtons();
+}
+
+/**
+ * Sets playback to first active connection and plays it.
+ */
+function playFromStartStep() {
+    setCurrentConnectionPosition(0);
+}
+
+/**
+ * Replays the currently selected connection.
+ */
+function replayCurrentStep() {
+    const targetIndex = currentSelectedConnectionIndex >= 0 ? currentSelectedConnectionIndex : 0;
+    playConnectionAtIndex(targetIndex);
+}
+
+/**
+ * Sets playback to last active connection and plays it.
+ */
+function playFromEndStep() {
+    setCurrentConnectionPosition(connectionSequence.length - 1);
+}
+
+/**
+ * Plays the next connection in the sequence.
+ */
+function playNextStep() {
+    let targetIndex = currentConnectionIndex;
+    if (targetIndex >= connectionSequence.length) {
+        targetIndex = connectionSequence.length - 1;
+    }
+    playConnectionAtIndex(targetIndex);
 }
 
 /**
  * Plays the previous connection in the sequence.
  */
 function playPrevStep() {
-    stopAllFlows();
-    flowController.isPlaying = false;
+    const targetIndex = Math.max(currentConnectionIndex - 2, 0);
+    playConnectionAtIndex(targetIndex);
+}
 
-    if (connectionSequence.length === 0) return;
+/**
+ * Determines whether a connection group should be treated as "fachlich" (business).
+ * If no explicit classification exists, groups are treated as business by default.
+ * @param {Object} group - Connection group
+ * @returns {boolean} True when group is considered business
+ */
+function isBusinessConnectionGroup(group) {
+    if (!group || typeof group !== 'object') return false;
 
-    // Go back one, but not less than 0
-    currentConnectionIndex = Math.max(currentConnectionIndex - 2, 0);
+    if (typeof group.fachlich === 'boolean') {
+        return group.fachlich;
+    }
 
-    const connLine = connectionSequence[currentConnectionIndex];
-    startDataFlowOnConnection(connLine, {
-        loop: false
-    });
+    if (typeof group.business === 'boolean') {
+        return group.business;
+    }
 
-    currentConnectionIndex++;
+    const category = typeof group.category === 'string' ? group.category.toLowerCase() : '';
+    if (category === 'technical' || category === 'technisch') {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Synchronizes the master checkbox state for business groups.
+ * @param {HTMLInputElement} checkbox - Master checkbox element
+ * @param {Array<Object>} businessGroups - List of groups considered business
+ */
+function updateBusinessGroupsMasterCheckboxState(checkbox, businessGroups) {
+    if (!checkbox) return;
+
+    if (!businessGroups.length) {
+        checkbox.checked = false;
+        checkbox.indeterminate = false;
+        checkbox.disabled = true;
+        return;
+    }
+
+    checkbox.disabled = false;
+    const activeCount = businessGroups.filter(group => group.active !== false).length;
+
+    checkbox.checked = activeCount === businessGroups.length;
+    checkbox.indeterminate = activeCount > 0 && activeCount < businessGroups.length;
 }
 
 /**
@@ -1810,6 +2227,31 @@ function buildConnectionGroupsUI() {
     }
 
     container.innerHTML = '';
+
+    const businessGroups = connectionGroups.filter(isBusinessConnectionGroup);
+
+    const masterRow = document.createElement('div');
+    masterRow.className = 'connection-group-row connection-group-row-master';
+
+    const masterCheckbox = document.createElement('input');
+    masterCheckbox.type = 'checkbox';
+
+    masterCheckbox.addEventListener('change', () => {
+        businessGroups.forEach(group => {
+            group.active = masterCheckbox.checked;
+        });
+
+        updateConnectionVisibilityFromGroups();
+        rebuildConnectionSequence();
+        buildConnectionGroupsUI();
+    });
+
+    const masterLabel = document.createElement('span');
+    masterLabel.textContent = 'all groups';
+
+    masterRow.appendChild(masterCheckbox);
+    masterRow.appendChild(masterLabel);
+    container.appendChild(masterRow);
 
     connectionGroups.forEach((group, index) => {
         const row = document.createElement('div');
@@ -1826,6 +2268,9 @@ function buildConnectionGroupsUI() {
 
             // 2. Rebuild animation playlist
             rebuildConnectionSequence();
+
+            // 3. Update top-level toggle state
+            updateBusinessGroupsMasterCheckboxState(masterCheckbox, businessGroups);
         });
 
         const label = document.createElement('span');
@@ -1835,6 +2280,8 @@ function buildConnectionGroupsUI() {
         row.appendChild(label);
         container.appendChild(row);
     });
+
+    updateBusinessGroupsMasterCheckboxState(masterCheckbox, businessGroups);
 
     rebuildConnectionSequence();
 

@@ -1,6 +1,7 @@
 # Ordner ignorieren
-.github/agents
+.github/
 puml/
 model/
 aia-context/
 out/
+model-files.properties

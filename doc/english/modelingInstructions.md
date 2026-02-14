@@ -32,6 +32,11 @@ Make sure that:
 - the path to the model in `aiaViewer.html` is correct,
 - the browser has access to the model (no CORS issues due to path changes).
 
+### Developer Note (hidden feature)
+
+- Default predefined models remain hardcoded in `js/viewer.js` (`model.json`, `simple-model.json`).
+- Additional predefined models can optionally be provided via `model-files.properties` in project root.
+
 ---
 # 3. Overall Model Structure
 
@@ -335,7 +340,27 @@ Standard attributes:
 - `throughput (string, optional)`: Load description, e.g., "800 req/min", "50 req/s".
 - `order (number, optional)`: Order within the group.
 - `label (string, optional)`: Label of the connection.
-- `flowDuration (number, optional)`: Here, a custom time in seconds can be defined for the animation of a connection, deviating from the default flowDuration.  
+- `flowDuration (number, optional)`: Custom animation time in seconds for this specific connection. This value overrides global timing settings.
+
+Global flow animation settings (optional, in JSON root under `settings`):
+
+```json
+{
+  "settings": {
+    "flowDurationMin": 3,
+    "flowSpeed": 2.5
+  }
+}
+```
+
+- `settings.flowDurationMin` (number): Minimum animation duration in seconds. Prevents very short connections from animating too fast.
+- `settings.flowSpeed` (number): Animation speed in grid units per second.
+
+Timing priority (highest to lowest):
+
+1. `connection.flowDuration`
+2. Computed duration via `settings.flowSpeed`, limited by `settings.flowDurationMin`
+3. Viewer defaults (`flowDurationMin = 3`, `flowSpeed = 2.5`)
 
 Geometry attributes:
 

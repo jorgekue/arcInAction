@@ -374,5 +374,9 @@
         "database": {
             "color": "#e15759"
         }
+    },
+    "settings": {
+        "flowDurationMin": 2.0,
+        "flowSpeed": 3.0
     }
 }

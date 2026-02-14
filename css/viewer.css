@@ -126,6 +126,15 @@ body {
     font-size: 12px;
 }
 
+#flow-controls .flow-icon-btn {
+    min-width: 30px;
+    height: 26px;
+    margin: 0 2px;
+    padding: 0 6px;
+    font-size: 14px;
+    line-height: 1;
+}
+
 /* #flow-controls button {
     margin: 0 4px;
 } */
@@ -178,6 +187,12 @@ body {
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
+}
+
+.connection-group-row-master {
+    justify-content: flex-start;
+    font-style: italic;
+    margin-bottom: 6px;
 }
 
 /* Ansicht-Panel oben mittig */
