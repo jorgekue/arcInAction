@@ -1,0 +1,18 @@
+<html>
+<body>
+<input type="color" id="colorPicker" value="#0000ff">
+<span id="colorCode">#0000ff</span>
+<script>
+  const picker = document.getElementById("colorPicker");
+  const codeSpan = document.getElementById("colorCode");
+
+  picker.addEventListener("input", function () {
+    const color = picker.value; // z.B. "#1a2b3c"
+    codeSpan.textContent = color;
+    document.body.style.backgroundColor = color; // nur als Demo
+  });
+</script>
+
+</body>
+</html>
+

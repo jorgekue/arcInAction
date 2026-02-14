@@ -1,0 +1,6 @@
+# Ordner ignorieren
+.github/agents
+puml/
+model/
+aia-context/
+out/
