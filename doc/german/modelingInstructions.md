@@ -348,13 +348,15 @@ Globale Datenfluss‑Einstellungen (optional, im JSON‑Root unter `settings`):
 {
   "settings": {
     "flowDurationMin": 3,
-    "flowSpeed": 2.5
+    "flowSpeed": 2.5,
+    "animateComponents": true
   }
 }
 ```
 
 - `settings.flowDurationMin` (number): Mindestdauer der Animation in Sekunden. Verhindert, dass sehr kurze Verbindungen zu schnell animieren.
 - `settings.flowSpeed` (number): Animationsgeschwindigkeit in Grid‑Einheiten pro Sekunde.
+- `settings.animateComponents` (boolean): Aktiviert/deaktiviert das Hervorheben aktiver Komponenten während der Datenfluss‑Animation. Default ist `true`.
 
 Priorität der Zeitsteuerung (höchste zu niedrigste):
 
@@ -490,31 +492,29 @@ Mit typeStyles definierst du die Standardfarbe von Komponenten eines Typs:
 
 ```json
 "typeStyles": {
-  "frontend": {
-    "color": "#4e79a7"
-  },
-  "service": {
-    "color": "#59a14f"
-  },
-  "database": {
-    "color": "#e15759"
-  }
+    "actor": {
+        "color": "yellow",
+        "activeColor": "yellowgreen"
+    },
+    "frontend": {
+        "color": "cornflowerblue",
+        "activeColor": "blue"
+    },
+    "service": {
+        "color": "lightseagreen",
+        "activeColor": "green"
+    },
+    "database": {
+        "color": "lightcoral",
+        "activeColor": "red"
+    }
 }
 ```
-Interpretation im Beispielmodell:
+Das Attribut color definiert die Farbe, wenn die Komponente nicht Teil einer aktiven Datenflussanimation ist.
+Das Attribut activecolor definiert die Farbe, wenn die Komponente Teil einer aktiven Datenflussanimation ist.
 
-- frontend → blau (#4e79a7)
-- service → grün (#59a14f)
-- database → rot (#e15759)
-
-Weitere Typen können ergänzt werden, z.B.:
-
-```json
-"queue": { "color": "#af7aa1" },
-"scheduler": { "color": "#f28e2b" },
-"person": { "color": "#9c755f" }
-```
-Komponenten mit einem type ohne Eintrag in typeStyles erhalten eine Default‑Farbe (Viewer‑Implementierung).
+Analog können auch die Farben der obenhalb, noch nicht erwähnten Komponenttypen (`queue`,`scheduler`,`person`) explizit definiert werden.
+Components with a type that has no entry in `typeStyles` are assigned a default color (viewer implementation).
 
 ---
 # 8. Best Practices

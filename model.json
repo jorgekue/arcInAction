@@ -365,14 +365,28 @@
         }
     ],
     "typeStyles": {
+        "actor": {
+            "color": "yellow",
+            "activeColor": "yellowgreen"
+        },
         "frontend": {
-            "color": "#4e79a7"
+            "color": "cornflowerblue",
+            "activeColor": "blue"
+        },
+        "queue": {
+            "color": "cornflowerblue",
+            "activeColor": "blue"
+        },
+        "scheduler": {
+           "activeColor": "cornflowerblue"
         },
         "service": {
-            "color": "#59a14f"
+            "color": "lightseagreen",
+            "activeColor": "green"
         },
         "database": {
-            "color": "#e15759"
+            "color": "lightcoral",
+            "activeColor": "red"
         }
     },
     "settings": {

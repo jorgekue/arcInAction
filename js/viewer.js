@@ -56,6 +56,11 @@ const modelFlowTimingSettings = {
     flowSpeed: 2.5
 };
 
+/** @type {{animateComponents: boolean}} Global visual settings from model.settings */
+const modelVisualSettings = {
+    animateComponents: true
+};
+
 /**
  * Predefined model files available in the viewer.
  * @type {Array<{name: string, file: string}>}
@@ -358,6 +363,9 @@ const componentCenters = new Map();
 /** @type {Map<string, {mesh: THREE.Mesh|THREE.Group, data: Object}>} Map of component IDs to mesh and data */
 const componentMeshes = new Map();
 
+/** @type {Map<string, number>} Active flow reference count per component ID */
+const activeComponentFlowCounts = new Map();
+
 /** @type {Object|null} Currently loaded model data */
 let modelData = null;
 
@@ -446,8 +454,130 @@ function clearScene() {
 
     componentCenters.clear();
     componentMeshes.clear();
+    activeComponentFlowCounts.clear();
     clearDetails();
     clearHighlight();
+}
+
+/**
+ * Returns configured active color for a component type from model typeStyles.
+ * Expected JSON: typeStyles.<type>.activeColor
+ * @param {Object} componentData - Component data object
+ * @returns {string|number|null} Active color or null
+ */
+function getConfiguredActiveColor(componentData) {
+    const componentType = componentData && componentData.type;
+    if (!componentType) return null;
+
+    const style = modelData?.typeStyles?.[componentType];
+    if (!style || style.activeColor == null) {
+        return null;
+    }
+    return style.activeColor;
+}
+
+/**
+ * Applies or restores active visual style for a component.
+ * @param {string} componentId - Component ID
+ * @param {boolean} isActive - Whether active style should be applied
+ */
+function applyComponentActiveStyle(componentId, isActive) {
+    const entry = componentMeshes.get(componentId);
+    if (!entry || !entry.mesh) return;
+
+    const configuredActiveColor = getConfiguredActiveColor(entry.data);
+
+    entry.mesh.traverse(obj => {
+        if (!obj?.isMesh || !obj.material) return;
+
+        const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+        materials.forEach(material => {
+            if (!material?.color) return;
+
+            material.userData = material.userData || {};
+            if (material.userData.originalColorHex == null) {
+                material.userData.originalColorHex = material.color.getHex();
+            }
+
+            if (isActive) {
+                if (configuredActiveColor != null) {
+                    material.color.set(configuredActiveColor);
+                } else {
+                    const base = new THREE.Color(material.userData.originalColorHex);
+                    const hsl = { h: 0, s: 0, l: 0 };
+                    base.getHSL(hsl);
+
+                    if (hsl.s > 0.02) {
+                        const stronger = new THREE.Color().setHSL(
+                            hsl.h,
+                            Math.min(1, hsl.s + 0.35),
+                            Math.max(0.12, hsl.l * 0.72)
+                        );
+                        material.color.copy(stronger);
+                    } else {
+                        const darker = base.clone().multiplyScalar(0.65);
+                        material.color.copy(darker);
+                    }
+                }
+            } else {
+                material.color.setHex(material.userData.originalColorHex);
+            }
+        });
+    });
+}
+
+/**
+ * Activates/deactivates component style based on active flow reference counting.
+ * @param {string} componentId - Component ID
+ * @param {boolean} activate - Whether to activate or deactivate
+ */
+function updateComponentFlowActivation(componentId, activate) {
+    if (!componentId) return;
+
+    const currentCount = activeComponentFlowCounts.get(componentId) || 0;
+    if (activate) {
+        const nextCount = currentCount + 1;
+        activeComponentFlowCounts.set(componentId, nextCount);
+        if (currentCount === 0) {
+            applyComponentActiveStyle(componentId, true);
+        }
+        return;
+    }
+
+    const nextCount = Math.max(currentCount - 1, 0);
+    if (nextCount === 0) {
+        activeComponentFlowCounts.delete(componentId);
+        applyComponentActiveStyle(componentId, false);
+    } else {
+        activeComponentFlowCounts.set(componentId, nextCount);
+    }
+}
+
+/**
+ * Activates source and target components for a connection.
+ * @param {Object|null} connection - Connection object
+ * @returns {Array<string>} Activated component IDs
+ */
+function activateComponentsForConnection(connection) {
+    if (!modelVisualSettings.animateComponents) {
+        return [];
+    }
+
+    const ids = [];
+    if (connection?.from) ids.push(connection.from);
+    if (connection?.to && connection.to !== connection.from) ids.push(connection.to);
+
+    ids.forEach(id => updateComponentFlowActivation(id, true));
+    return ids;
+}
+
+/**
+ * Deactivates a list of component IDs previously activated for a flow.
+ * @param {Array<string>} componentIds - Component IDs
+ */
+function deactivateComponentsForFlow(componentIds) {
+    if (!Array.isArray(componentIds)) return;
+    componentIds.forEach(id => updateComponentFlowActivation(id, false));
 }
 
 // ============================================================================
@@ -1228,11 +1358,13 @@ function rebuildConnectionSequence() {
  * Supported settings:
  * - flowDurationMin: minimum duration in seconds
  * - flowSpeed: speed in grid units per second
+ * - animateComponents: enables/disables active component highlighting
  * @param {Object} model - Model object
  */
 function applyFlowTimingSettingsFromModel(model) {
     modelFlowTimingSettings.flowDurationMin = 3;
     modelFlowTimingSettings.flowSpeed = 2.5;
+    modelVisualSettings.animateComponents = true;
 
     const settings = model && typeof model.settings === 'object' ? model.settings : null;
     if (!settings) {
@@ -1247,6 +1379,10 @@ function applyFlowTimingSettingsFromModel(model) {
     }
     if (Number.isFinite(parsedSettingsSpeed) && parsedSettingsSpeed > 0) {
         modelFlowTimingSettings.flowSpeed = parsedSettingsSpeed;
+    }
+
+    if (typeof settings.animateComponents === 'boolean') {
+        modelVisualSettings.animateComponents = settings.animateComponents;
     }
 }
 
@@ -1337,6 +1473,8 @@ function startDataFlowOnConnection(connObject, options = {}) {
         pathPointsFlow.reverse();
     }
 
+    const activeComponentIds = activateComponentsForConnection(conn);
+
     activeFlows.push({
         object3D: flowMesh,
         labelSprite,
@@ -1344,7 +1482,8 @@ function startDataFlowOnConnection(connObject, options = {}) {
         duration,
         elapsed: direction === 1 ? 0 : duration,
         loop,
-        direction
+        direction,
+        activeComponentIds
     });
 }
 
@@ -1960,6 +2099,7 @@ function updateDataFlows(delta) {
         if (!flow.loop && (tRaw > 1 || tRaw < 0)) {
             // Animation fertig -> Objekte entfernen
             scene.remove(flow.object3D);   // labelSprite is attached to object3D
+            deactivateComponentsForFlow(flow.activeComponentIds);
             activeFlows.splice(i, 1);
             continue;
         }
@@ -2055,6 +2195,7 @@ function updateAutoPlay(delta, hasRunningFlows) {
 function stopAllFlows() {
     for (const flow of activeFlows) {
         scene.remove(flow.object3D);
+        deactivateComponentsForFlow(flow.activeComponentIds);
     }
     activeFlows.length = 0;
 }

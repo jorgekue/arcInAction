@@ -348,13 +348,15 @@ Global flow animation settings (optional, in JSON root under `settings`):
 {
   "settings": {
     "flowDurationMin": 3,
-    "flowSpeed": 2.5
+    "flowSpeed": 2.5,
+    "animateComponents": true
   }
 }
 ```
 
 - `settings.flowDurationMin` (number): Minimum animation duration in seconds. Prevents very short connections from animating too fast.
 - `settings.flowSpeed` (number): Animation speed in grid units per second.
+- `settings.animateComponents` (boolean): Enables/disables active component highlighting during data flow animations. Default is `true`.
 
 Timing priority (highest to lowest):
 
@@ -501,20 +503,12 @@ With typeStyles you define the default color of components of a type:
   }
 }
 ```
-Interpretation in the example model:
 
-- frontend → blue (#4e79a7)
-- service → green (#59a14f)
-- database → red (#e15759)
+The `color` attribute defines the color when the component is not part of an active data flow animation.
+The `activecolor` attribute defines the color when the component is part of an active data flow animation.
 
-Additional types can be added, e.g.:
-
-```json
-"queue": { "color": "#af7aa1" },
-"scheduler": { "color": "#f28e2b" },
-"person": { "color": "#9c755f" }
-```
-Components with a type without an entry in typeStyles receive a default color (viewer implementation).
+Similarly, the colors of the component types not yet mentioned above (`queue`, `scheduler`, `person`) can also be explicitly defined.
+Components with a type that has no entry in `typeStyles` are assigned a default color (viewer implementation).
 
 ---
 # 8. Best Practices
