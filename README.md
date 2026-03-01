@@ -34,7 +34,13 @@ The tool uses a declarative JSON-based modeling approach, making it easy to vers
 
 Since this is a client-side web application, you need to serve it through a local web server (CORS requirements prevent opening HTML files directly).
 
-### Option 1: Python HTTP Server
+### Option 1: GitHub Pages (quickest way)
+
+The quickest way to use the program directly is:
+
+https://jorgekue.github.io/arcInAction/aiaViewer.html
+
+### Option 2: Python HTTP Server
 
 If you have Python installed:
 
@@ -51,7 +57,7 @@ Then open your browser and navigate to:
 http://localhost:8000/aiaViewer.html
 ```
 
-### Option 2: Node.js http-server
+### Option 3: Node.js http-server
 
 If you have Node.js installed:
 
@@ -74,14 +80,14 @@ Then open:
 http://localhost:8000/aiaViewer.html
 ```
 
-### Option 3: VS Code Live Server
+### Option 4: VS Code Live Server
 
 1. Install the [Live Server extension](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) in VS Code
 2. Open the project folder in VS Code
 3. Right-click on `aiaViewer.html` in the file explorer
 4. Select "Open with Live Server"
 
-### Option 4: Other Web Servers
+### Option 5: Other Web Servers
 
 Any web server that can serve static files will work:
 - Apache

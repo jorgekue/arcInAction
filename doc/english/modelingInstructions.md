@@ -32,6 +32,10 @@ Make sure that:
 - the path to the model in `aiaViewer.html` is correct,
 - the browser has access to the model (no CORS issues due to path changes).
 
+Public access (for interested stakeholders) is also available via GitHub Pages:
+
+- Viewer: https://jorgekue.github.io/arcInAction/aiaViewer.html
+
 ### Developer Note (hidden feature)
 
 - Default predefined models remain hardcoded in `js/viewer.js` (`model.json`, `simple-model.json`).

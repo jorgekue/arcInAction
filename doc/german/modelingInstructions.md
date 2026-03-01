@@ -32,6 +32,10 @@ Stell sicher, dass:
 - der Pfad zum Modell in `aiaViewer.html` korrekt ist,
 - Browser Zugriff auf das Modell hat (keine CORS‑Probleme durch Pfadwechsel).
 
+Für Interessenten ist ein öffentlicher Zugriff auch über GitHub Pages möglich:
+
+- Viewer: https://jorgekue.github.io/arcInAction/aiaViewer.html
+
 ### Entwicklernotiz (Hidden Feature)
 
 - Die Standard-Modelle bleiben fest in `js/viewer.js` referenziert (`model.json`, `simple-model.json`).

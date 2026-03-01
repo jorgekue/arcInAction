@@ -300,6 +300,14 @@ Damit dient PlantUML als **kompakte, textuelle Beschreibung**, während der Agen
 
 ---
 
+# Availability on GitHub Pages
+
+Für Interessenten ist die schnellste Möglichkeit, das Programm direkt zu nutzen, über GitHub Pages:
+
+https://jorgekue.github.io/arcInAction/aiaViewer.html
+
+---
+
 # Zusammenfassung und Fazit
 
 **architecture in action (aia)** zeigt einen alternativen Ansatz, um Software‑Architekturen zu erklären: Architektur wird als **4D‑Modell** (3D + Zeit) visualisiert, kombiniert Elemente aus **Komponenten‑ und Sequenzdiagrammen** in einem Bild und nutzt ein **deklaratives JSON‑Modell** als Grundlage. So lassen sich auch komplexe Zielarchitekturen anschaulich, strukturiert und zielgruppengerecht vermitteln – oft klarer als mit klassischen 2D‑Darstellungen.
@@ -319,6 +327,9 @@ Juergen.Kuerpig@adesso-insurance-solutions.de
 ---
 
 # Referenzen
+
+- **Live Viewer (GitHub Pages)**  
+  https://jorgekue.github.io/arcInAction/aiaViewer.html
 
 - **Modellierungsanleitung für aia‑Modelle**  
   [Modellierungsanleitung](/doc/german/modelingInstructions.md)
