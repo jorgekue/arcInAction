@@ -378,7 +378,7 @@
             "activeColor": "blue"
         },
         "scheduler": {
-           "activeColor": "cornflowerblue"
+            "activeColor": "cornflowerblue"
         },
         "service": {
             "color": "lightseagreen",
@@ -391,6 +391,8 @@
     },
     "settings": {
         "flowDurationMin": 2.0,
-        "flowSpeed": 3.0
+        "flowSpeed": 3.0,
+        "animateComponents": false,
+        "selectConnectionsAndComponents": true
     }
 }

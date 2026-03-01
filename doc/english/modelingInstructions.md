@@ -349,7 +349,8 @@ Global flow animation settings (optional, in JSON root under `settings`):
   "settings": {
     "flowDurationMin": 3,
     "flowSpeed": 2.5,
-    "animateComponents": true
+    "animateComponents": true,
+    "selectConnectionsAndComponents": false
   }
 }
 ```
@@ -357,6 +358,16 @@ Global flow animation settings (optional, in JSON root under `settings`):
 - `settings.flowDurationMin` (number): Minimum animation duration in seconds. Prevents very short connections from animating too fast.
 - `settings.flowSpeed` (number): Animation speed in grid units per second.
 - `settings.animateComponents` (boolean): Enables/disables active component highlighting during data flow animations. Default is `true`.
+- `settings.selectConnectionsAndComponents` (boolean, optional): Controls visibility mode for the connection groups panel. If `false` (default), only connection lines/arrows are filtered by active groups. If `true`, components not used by the currently active groups are also hidden.
+
+Connection visibility mode behavior in the viewer UI:
+
+- The right-middle Connection Groups panel has a fixed header area and a scrollable group list.
+- The `all groups` master switch stays visible while scrolling.
+- Below it, two radio options define visibility mode:
+  - `only connections`
+  - `connections & components`
+- On startup, the selected mode is initialized from `settings.selectConnectionsAndComponents` when provided; otherwise it defaults to `false`.
 
 Timing priority (highest to lowest):
 

@@ -189,12 +189,24 @@ Connections are organized in **ConnectionGroups**:
 - Each group bundles thematically related connections – such as a **use case** like "Register user", "Create order" or "Process payment".
 - The groups can be individually toggled on or off via a menu **in the middle right** of the viewer and thus support a successive and structured walkthrough of the target architecture.
 
+The Connection Groups area is split into:
+
+- a **fixed header** with the `all groups` master switch,
+- two visibility mode radios:
+  - `only connections`
+  - `connections & components`
+- and a **scrollable list** of individual groups.
+
+With `connections & components`, the viewer also hides components that are not referenced by currently active groups. This can significantly improve focus when discussing one process at a time.
+
 Per ConnectionGroup, among other things, are defined:
 
 - a **Name** (e.g., "creating orders"),
 - an **order** for the sequence of a cross-group data flow animation,
 - the information whether the group should initially be **active** when loading the model (`active`),
 - optionally a **color** that is used for all connections in this group.
+
+Initial visibility mode can optionally be configured in model root `settings` via `selectConnectionsAndComponents` (default: `false`).
 
 ![Connections Groups](/doc/img/connectionGroups.gif)
 

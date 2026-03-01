@@ -168,6 +168,18 @@ body {
 
 /* Liste & Einträge */
 #connection-groups-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.connection-groups-fixed-controls {
+    flex: 0 0 auto;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.connection-groups-scroll-list {
     max-height: 200px;
     overflow-y: auto;
 }
@@ -192,7 +204,12 @@ body {
 .connection-group-row-master {
     justify-content: flex-start;
     font-style: italic;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
+}
+
+.connection-group-row-mode {
+    margin-bottom: 3px;
+    cursor: pointer;
 }
 
 /* Ansicht-Panel oben mittig */

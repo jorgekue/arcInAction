@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8" />
@@ -11,26 +11,26 @@
 <body>
     <!-- Interaction hints (top left) -->
     <div id="info">
-        Maus: drehen · Mausrad: Zoom · Shift+Maus: verschieben · Klick: Details
+        Mouse: rotate · Mouse wheel: zoom · Shift+Mouse: pan · Click: details
     </div>
 
     <!-- Component details panel (top right) -->
     <div id="details">
         <b>Details</b><br>
-        <span id="details-content">Keine Auswahl</span>
+        <span id="details-content">No selection</span>
     </div>
 
     <!-- File input control (bottom right) -->
     <div id="controls">
         <label>
-            Modell laden
+            Load model
             <input id="fileInput" type="file" accept=".json" style="display:none;">
         </label>
     </div>
 
     <!-- Model selection toggle -->
     <div id="modelToggle">
-        <button id="toggleModelListBtn">Modelle…</button>
+        <button id="toggleModelListBtn">Models…</button>
     </div>
 
     <!-- Model list panel (hidden by default) -->
@@ -60,10 +60,10 @@
         </div>
         <label class="view-panel-item">
             <input type="checkbox" id="chk-view-grid" />
-            <span>Grid anzeigen</span>
+            <span>Show grid</span>
         </label>
             <button id="btn-impressum" class="view-panel-button">
-                Info
+                About
             </button>
     </div>
 
@@ -74,24 +74,24 @@
     <div id="impressum-overlay" class="aia-impressum-overlay" style="display: none;">
         <div class="aia-impressum-dialog">
             <div class="aia-impressum-header">
-                <span>architecture in action (aia) – Info</span>
+                <span>architecture in action (aia) – About</span>
                 <button id="btn-impressum-close" class="aia-impressum-close">&times;</button>
             </div>
             <div class="aia-impressum-body">
-                <p><strong>Programm:</strong> architecture in action (aia)</p>
-                <p><strong>Version:</strong> 1.0.0 (Prototype)</p>
-                <p><strong>Lizenz:</strong> Apache License, Version 2.0</p>
+                <p><strong>Program:</strong> architecture in action (aia)</p>
+                <p><strong>Version:</strong> 1.1.0 (Protoype)</p>
+                <p><strong>License:</strong> Apache License, Version 2.0</p>
 
                 <hr>
 
-                <p><strong>Beschreibung:</strong><br>
-                    Demo‑Programm zur 4D‑Visualisierung von Software‑Architekturen (3D‑Komponentenmodell mit animierten
-                    Datenflüssen).</p>
+                <p><strong>Description:</strong><br>
+                    Demo application for 4D visualization of software architectures (3D component model with animated
+                    data flows).</p>
 
-                <p><strong>Technologie‑Stack:</strong><br>
+                <p><strong>Technology stack:</strong><br>
                     JavaScript, <a href="https://threejs.org/" target="_blank" rel="noopener">THREE.js</a>, WebGL.</p>
 
-                <p><strong>Projekt‑Repository:</strong><br>
+                <p><strong>Project repository:</strong><br>
                     <a href="https://github.com/jorgekue/arcInAction" target="_blank" rel="noopener">
                         https://github.com/jorgekue/arcInAction
                     </a>

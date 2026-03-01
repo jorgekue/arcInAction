@@ -349,7 +349,8 @@ Globale Datenfluss‑Einstellungen (optional, im JSON‑Root unter `settings`):
   "settings": {
     "flowDurationMin": 3,
     "flowSpeed": 2.5,
-    "animateComponents": true
+    "animateComponents": true,
+    "selectConnectionsAndComponents": false
   }
 }
 ```
@@ -357,6 +358,16 @@ Globale Datenfluss‑Einstellungen (optional, im JSON‑Root unter `settings`):
 - `settings.flowDurationMin` (number): Mindestdauer der Animation in Sekunden. Verhindert, dass sehr kurze Verbindungen zu schnell animieren.
 - `settings.flowSpeed` (number): Animationsgeschwindigkeit in Grid‑Einheiten pro Sekunde.
 - `settings.animateComponents` (boolean): Aktiviert/deaktiviert das Hervorheben aktiver Komponenten während der Datenfluss‑Animation. Default ist `true`.
+- `settings.selectConnectionsAndComponents` (boolean, optional): Steuert den Sichtbarkeitsmodus im ConnectionGroups‑Panel. Bei `false` (Default) werden nur Verbindungslinien/-pfeile anhand aktiver Gruppen gefiltert. Bei `true` werden zusätzlich alle Komponenten ausgeblendet, die in den aktuell aktiven Gruppen nicht verwendet werden.
+
+Sichtbarkeitsmodus im Viewer‑UI:
+
+- Das ConnectionGroups‑Panel rechts mittig besteht aus einem fixen Kopfbereich und einer scrollbaren Gruppenliste.
+- Der Schalter `all groups` bleibt beim Scrollen immer sichtbar.
+- Darunter gibt es zwei Radio‑Optionen:
+  - `only connections`
+  - `connections & components`
+- Beim Start wird der Modus aus `settings.selectConnectionsAndComponents` übernommen, sofern gesetzt; sonst gilt der Default `false`.
 
 Priorität der Zeitsteuerung (höchste zu niedrigste):
 

@@ -56,9 +56,10 @@ const modelFlowTimingSettings = {
     flowSpeed: 2.5
 };
 
-/** @type {{animateComponents: boolean}} Global visual settings from model.settings */
+/** @type {{animateComponents: boolean, selectConnectionsAndComponents: boolean}} Global visual settings from model.settings */
 const modelVisualSettings = {
-    animateComponents: true
+    animateComponents: true,
+    selectConnectionsAndComponents: false
 };
 
 /**
@@ -66,8 +67,8 @@ const modelVisualSettings = {
  * @type {Array<{name: string, file: string}>}
  */
 const defaultModelFiles = [
-    { name: 'Standardmodell', file: 'model.json' },
-    { name: 'Einfaches Modell', file: 'simple-model.json' }
+    { name: 'Standard model', file: 'model.json' },
+    { name: 'Simple model', file: 'simple-model.json' }
 ];
 
 /** @type {Array<{name: string, file: string}>} Full list of available models (default + external) */
@@ -195,7 +196,7 @@ const cameraViews = [
     },
     {
         id: 'top',
-        label: 'Oben',
+        label: 'Top',
         position: { x: 0, y: 25, z: 0 },
         target: { x: 0, y: 0, z: 0 }
     },
@@ -393,15 +394,15 @@ function showDetails(component) {
 
     el.innerHTML = `
         <b>${component.label || component.id}</b><br>
-        Typ: ${component.type || '-'}<br>
-        Position: x=${component.x ?? 0}, y=${component.y ?? 0}<br>
+                Type: ${component.type || '-'}<br>
+                Position: x=${component.x ?? 0}, y=${component.y ?? 0}<br>
         Layer-Z: ${component.layerZ ?? '-'}<br>
         <br>
-        <b>Metadaten</b><br>
+                <b>Metadata</b><br>
         Owner: ${meta.owner || '-'}<br>
         Version: ${meta.version || '-'}<br>
         Tech: ${meta.tech || '-'}<br>
-        Kritikalität: ${meta.criticality || '-'}
+                Criticality: ${meta.criticality || '-'}
       `;
 }
 
@@ -410,7 +411,7 @@ function showDetails(component) {
  */
 function clearDetails() {
     const el = document.getElementById('details-content');
-    el.innerHTML = 'Keine Auswahl';
+    el.innerHTML = 'No selection';
 }
 
 /**
@@ -1215,7 +1216,44 @@ function updateConnectionVisibilityFromGroups() {
         }
     });
 
+    updateComponentVisibilityFromGroups();
+
     updateCurrentConnectionMarker();
+}
+
+/**
+ * Updates visibility of components based on active connection groups.
+ * Controlled via model.settings.selectConnectionsAndComponents.
+ */
+function updateComponentVisibilityFromGroups() {
+    if (componentMeshes.size === 0) {
+        return;
+    }
+
+    if (!modelVisualSettings.selectConnectionsAndComponents) {
+        componentMeshes.forEach(({ mesh }) => {
+            if (mesh) {
+                mesh.visible = true;
+            }
+        });
+        return;
+    }
+
+    const visibleComponentIds = new Set();
+
+    connectionGroups
+        .filter(group => group && group.active)
+        .forEach(group => {
+            (group.connections || []).forEach(conn => {
+                if (conn?.from) visibleComponentIds.add(conn.from);
+                if (conn?.to) visibleComponentIds.add(conn.to);
+            });
+        });
+
+    componentMeshes.forEach((entry, componentId) => {
+        if (!entry?.mesh) return;
+        entry.mesh.visible = visibleComponentIds.has(componentId);
+    });
 }
 
 /**
@@ -1359,12 +1397,14 @@ function rebuildConnectionSequence() {
  * - flowDurationMin: minimum duration in seconds
  * - flowSpeed: speed in grid units per second
  * - animateComponents: enables/disables active component highlighting
+ * - selectConnectionsAndComponents: hides components not used by active connection groups
  * @param {Object} model - Model object
  */
 function applyFlowTimingSettingsFromModel(model) {
     modelFlowTimingSettings.flowDurationMin = 3;
     modelFlowTimingSettings.flowSpeed = 2.5;
     modelVisualSettings.animateComponents = true;
+     modelVisualSettings.selectConnectionsAndComponents = false;
 
     const settings = model && typeof model.settings === 'object' ? model.settings : null;
     if (!settings) {
@@ -1383,6 +1423,10 @@ function applyFlowTimingSettingsFromModel(model) {
 
     if (typeof settings.animateComponents === 'boolean') {
         modelVisualSettings.animateComponents = settings.animateComponents;
+    }
+
+    if (typeof settings.selectConnectionsAndComponents === 'boolean') {
+        modelVisualSettings.selectConnectionsAndComponents = settings.selectConnectionsAndComponents;
     }
 }
 
@@ -1553,7 +1597,7 @@ function loadModelFromFile(fileName) {
     return fetch(fileName)
         .then(resp => {
             if (!resp.ok) {
-                throw new Error(`HTTP ${resp.status} beim Laden von ${fileName}`);
+                throw new Error(`HTTP ${resp.status} while loading ${fileName}`);
             }
             return resp.json();
         })
@@ -2369,6 +2413,12 @@ function buildConnectionGroupsUI() {
 
     container.innerHTML = '';
 
+    const fixedControls = document.createElement('div');
+    fixedControls.className = 'connection-groups-fixed-controls';
+
+    const groupsScrollList = document.createElement('div');
+    groupsScrollList.className = 'connection-groups-scroll-list';
+
     const businessGroups = connectionGroups.filter(isBusinessConnectionGroup);
 
     const masterRow = document.createElement('div');
@@ -2392,9 +2442,54 @@ function buildConnectionGroupsUI() {
 
     masterRow.appendChild(masterCheckbox);
     masterRow.appendChild(masterLabel);
-    container.appendChild(masterRow);
+    fixedControls.appendChild(masterRow);
 
-    connectionGroups.forEach((group, index) => {
+    const modeRowConnectionsOnly = document.createElement('label');
+    modeRowConnectionsOnly.className = 'connection-group-row connection-group-row-mode';
+
+    const modeOnlyConnectionsRadio = document.createElement('input');
+    modeOnlyConnectionsRadio.type = 'radio';
+    modeOnlyConnectionsRadio.name = 'connection-visibility-mode';
+    modeOnlyConnectionsRadio.checked = !modelVisualSettings.selectConnectionsAndComponents;
+
+    const modeOnlyConnectionsLabel = document.createElement('span');
+    modeOnlyConnectionsLabel.textContent = 'only connections';
+
+    modeOnlyConnectionsRadio.addEventListener('change', () => {
+        if (!modeOnlyConnectionsRadio.checked) return;
+        modelVisualSettings.selectConnectionsAndComponents = false;
+        updateConnectionVisibilityFromGroups();
+    });
+
+    modeRowConnectionsOnly.appendChild(modeOnlyConnectionsRadio);
+    modeRowConnectionsOnly.appendChild(modeOnlyConnectionsLabel);
+    fixedControls.appendChild(modeRowConnectionsOnly);
+
+    const modeRowConnectionsAndComponents = document.createElement('label');
+    modeRowConnectionsAndComponents.className = 'connection-group-row connection-group-row-mode';
+
+    const modeConnectionsAndComponentsRadio = document.createElement('input');
+    modeConnectionsAndComponentsRadio.type = 'radio';
+    modeConnectionsAndComponentsRadio.name = 'connection-visibility-mode';
+    modeConnectionsAndComponentsRadio.checked = !!modelVisualSettings.selectConnectionsAndComponents;
+
+    const modeConnectionsAndComponentsLabel = document.createElement('span');
+    modeConnectionsAndComponentsLabel.textContent = 'connections & components';
+
+    modeConnectionsAndComponentsRadio.addEventListener('change', () => {
+        if (!modeConnectionsAndComponentsRadio.checked) return;
+        modelVisualSettings.selectConnectionsAndComponents = true;
+        updateConnectionVisibilityFromGroups();
+    });
+
+    modeRowConnectionsAndComponents.appendChild(modeConnectionsAndComponentsRadio);
+    modeRowConnectionsAndComponents.appendChild(modeConnectionsAndComponentsLabel);
+    fixedControls.appendChild(modeRowConnectionsAndComponents);
+
+    container.appendChild(fixedControls);
+    container.appendChild(groupsScrollList);
+
+    connectionGroups.forEach(group => {
         const row = document.createElement('div');
         row.className = 'connection-group-row';
 
@@ -2419,7 +2514,7 @@ function buildConnectionGroupsUI() {
 
         row.appendChild(checkbox);
         row.appendChild(label);
-        container.appendChild(row);
+        groupsScrollList.appendChild(row);
     });
 
     updateBusinessGroupsMasterCheckboxState(masterCheckbox, businessGroups);

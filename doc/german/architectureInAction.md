@@ -189,12 +189,24 @@ Verbindungen werden in **ConnectionGroups** organisiert:
 - Jede Gruppe bündelt thematisch zusammengehörige Verbindungen – etwa einen **Use Case** wie „User registrieren“, „Bestellung anlegen“ oder „Zahlung verarbeiten“.
 - Die Gruppen lassen sich über ein Menü **rechts mittig** im Viewer einzeln zu‑ oder wegschalten und unterstützen so einen sukzessiven und strukturierten Walkthrough durch die Zielarchitektur.
 
+Der Bereich ConnectionGroups ist dabei aufgeteilt in:
+
+- einen **fixen Kopfbereich** mit dem Master‑Schalter `all groups`,
+- zwei Radio‑Optionen für den Sichtbarkeitsmodus:
+  - `only connections`
+  - `connections & components`
+- sowie eine **scrollbare Liste** der einzelnen Gruppen.
+
+Mit `connections & components` blendet der Viewer zusätzlich Komponenten aus, die von den aktuell aktiven Gruppen nicht referenziert werden. Das erhöht die Übersichtlichkeit beim Fokus auf einzelne Abläufe deutlich.
+
 Pro ConnectionGroup werden u.a. definiert:
 
 - ein **Name** (z.B. „creating orders“),
 - eine **Reihenfolge** (`order`) für die Reihenfolge einer gruppenübergreifenden Datenflussanimation,
 - die Information, ob die Gruppe beim Laden des Modells initial **aktiv** sein soll (`active`),
 - optional eine **Farbe**, die für alle Verbindungen dieser Gruppe verwendet wird.
+
+Der initiale Sichtbarkeitsmodus kann optional im Modell unter `settings` über `selectConnectionsAndComponents` konfiguriert werden (Default: `false`).
 
 ![Connections Groups](/doc/img/connectionGroups.gif)
 

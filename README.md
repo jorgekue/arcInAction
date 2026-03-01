@@ -2,6 +2,8 @@
 
 A 3D/4D visualization tool for software architectures that combines component diagrams with sequence diagrams through animated data flows.
 
+Current version: 1.1
+
 ## Overview
 
 **architecture in action (aia)** is a web-based visualization tool that helps communicate software architectures to both technical and non-technical audiences. Unlike traditional 2D UML diagrams, aia provides:
@@ -103,8 +105,8 @@ arcInAction/
 ## Basic Usage
 
 1. **Load a Model**: The viewer automatically loads `model.json` on startup. You can also:
-   - Click "Modell laden" (Load Model) to load a custom JSON file
-   - Use the "Modelle…" (Models) button to switch between predefined models
+   - Click `Load model` to load a custom JSON file
+   - Use the `Models…` button to switch between predefined models
 
 ### Configure Additional Predefined Models
 
@@ -140,8 +142,24 @@ Notes:
 
 4. **View Controls**:
    - **Camera Views**: Switch between Isometric, Top, and Front views
-   - **Grid**: Toggle grid display
-   - **Connection Groups**: Enable/disable groups of connections
+    - **Show grid**: Toggle grid display
+    - **Connection Groups**: Enable/disable groups of connections
+    - **Visibility Mode**: Choose `only connections` or `connections & components`
+
+### Connection visibility mode setting
+
+You can define the initial visibility mode in your model JSON under `settings`:
+
+```json
+{
+   "settings": {
+      "selectConnectionsAndComponents": false
+   }
+}
+```
+
+- `false` (default): filter only connections by active groups
+- `true`: filter both connections and components by active groups
 
 ## Documentation
 
