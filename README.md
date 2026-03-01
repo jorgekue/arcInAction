@@ -2,7 +2,15 @@
 
 A 3D/4D visualization tool for software architectures that combines component diagrams with sequence diagrams through animated data flows.
 
-Current version: 1.1
+Current version: 1.1.0_Proto
+
+## Release History
+
+| Version | Date | Highlights |
+| --- | --- | --- |
+| 1.1.0_Proto | 2026-03-01 | Connection Groups panel with fixed header and visibility mode (only connections / connections & components); optional model setting settings.selectConnectionsAndComponents (default false); UI text harmonized to English; documentation updated (EN + DE). |
+
+For upcoming releases, add new entries at the top of this table.
 
 ## Overview
 
@@ -142,9 +150,9 @@ Notes:
 
 4. **View Controls**:
    - **Camera Views**: Switch between Isometric, Top, and Front views
-    - **Show grid**: Toggle grid display
-    - **Connection Groups**: Enable/disable groups of connections
-    - **Visibility Mode**: Choose `only connections` or `connections & components`
+   - **Show grid**: Toggle grid display
+   - **Connection Groups**: Enable/disable groups of connections
+   - **Visibility Mode**: Choose `only connections` or `connections & components`
 
 ### Connection visibility mode setting
 
