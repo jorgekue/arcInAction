@@ -99,13 +99,7 @@ Beispiel aus dem Business‑Layer:
   "y": 0,
   "width": 2,
   "height": 1,
-  "depth": 1,
-  "metadata": {
-    "owner": "Team A",
-    "version": "1.3.5",
-    "tech": "Java/JEE",
-    "criticality": "high"
-  }
+  "depth": 1
 }
 ```
 Standard‑Attribute einer Komponente:
@@ -116,11 +110,6 @@ Standard‑Attribute einer Komponente:
         Zur Auswahl: `"actor", "frontend", "service", "database", "queue", "scheduler"`.
 - `x, y (number)`: Position auf dem Layer in der X/Y‑Ebene.
 - `width, height, depth (number)`: Abmessungen des 3D‑Objekts (Interpretation abhängig von type).
-- `metadata (object, optional)`: Zusatzinformationen, z.B.:
-  - `owner`: verantwortliches Team/Bereich
-  - `version`: technische Version
-  - `tech`: technische Basis (z.B. Java, TypeScript/React, Kafka)
-  - `criticality`: z.B. "high", "medium", "very high"
 
 Spezielle Attribute für manche Typen:
 
@@ -141,11 +130,7 @@ Beispiel:
   "y": 0,
   "width": 1,
   "height": 2,
-  "depth": 1,
-  "metadata": {
-    "owner": "Fachbereich",
-    "tech": "N/A"
-  }
+  "depth": 1
 }
 ```
 
@@ -168,13 +153,7 @@ Beispiel:
   "y": 0,
   "width": 3,
   "height": 2,
-  "depth": 1,
-  "metadata": {
-    "owner": "Team Frontend",
-    "version": "2.1.0",
-    "tech": "TypeScript/React",
-    "criticality": "medium"
-  }
+  "depth": 1
 }
 ```
 
@@ -195,13 +174,7 @@ Beispiel:
   "y": 0,
   "width": 2,
   "height": 1,
-  "depth": 1,
-  "metadata": {
-    "owner": "Team A",
-    "version": "1.3.5",
-    "tech": "Java/JEE",
-    "criticality": "high"
-  }
+  "depth": 1
 }
 ```
 
@@ -220,13 +193,7 @@ Queue: type = "queue"
   "y": -3,
   "width": 2,
   "height": 2,
-  "depth": 2,
-  "metadata": {
-    "owner": "Integration Team",
-    "version": "N/A",
-    "tech": "Kafka",
-    "criticality": "medium"
-  }
+  "depth": 2
 }
 ```
 - Darstellung: Queue‑Symbol (liegender Zylinder).
@@ -262,13 +229,7 @@ Beispiel:
   "y": -1,
   "width": 2.5,
   "height": 2,
-  "depth": 2,
-  "metadata": {
-    "owner": "DBA Team",
-    "version": "13.0",
-    "tech": "PostgreSQL",
-    "criticality": "high"
-  }
+  "depth": 2
 }
 ```
 
@@ -318,9 +279,9 @@ Beispiel:
 {
   "from": "S2",
   "to": "Q1",
-  "type": "http",
+  "id": "Dummy",
+  "protocol": "http",
   "direction": "outbound",
-  "throughput": "200 req/min",
   "order": 4,
   "label": "order message",
   "flowDuration": 5,
@@ -335,17 +296,14 @@ Standard‑Attribute:
 
 - `from (string, Pflicht)`: ID der Quell‑Komponente (z.B. "S2").
 - `to (string, Pflicht)`: ID der Ziel‑Komponente (z.B. "Q1").
-- `type (string)`: Art der Verbindung (z.B. "http", "amqp").
+- `id (string, optional)`: Interface-/Verbindungs-Identifier (z.B. "Dummy", "IMS-1.11").
+- `protocol (string, optional)`: Protokoll-/Technologieangabe (z.B. "REST/HTTPS", "amqp").
 - `direction (string, optional)`: Richtung des Datenflusses:
   - `"outbound"`: Daten von from → to (Default).
   - `"inbound"`: Daten visuell von to → from (Pfad rückwärts).
-- `throughput (string, optional)`: Lastbeschreibung, z.B. "800 req/min", "50 req/s".
 - `order (number, optional)`: Reihenfolge innerhalb der Gruppe.
 - `label (string, optional)`: Beschriftung der Verbindung.
 - `flowDuration (number, optional)`: Eigene Animationsdauer in Sekunden für diese konkrete Verbindung. Dieser Wert überstimmt die globalen Animationseinstellungen.
-- `interface (object, optional)`: Interface‑Details, die im rechten oberen **Interface**‑Panel für den aktuellen Verbindungsschritt angezeigt werden. Unterstützte Keys:
-  - `id`: Interface‑Identifier
-  - `prot`: Protokoll (Kurzform)
 
 Globale Datenfluss‑Einstellungen (optional, im JSON‑Root unter `settings`):
 
@@ -414,20 +372,18 @@ Gruppe „user registration“
     {
       "from": "U1",
       "to": "UI1",
-      "type": "http",
-      "interface": { "id": "UI1_user_data", "prot": "HTTPS" },
+      "id": "UI1_user_data",
+      "protocol": "HTTPS",
       "direction": "outbound",
-      "throughput": "800 req/min",
       "order": 1,
       "label": "user data"
     },
     {
       "from": "UI1",
       "to": "S1",
-      "type": "http",
-      "interface": { "id": "S1_user_data", "prot": "REST/HTTPS" },
+      "id": "S1_user_data",
+      "protocol": "REST/HTTPS",
       "direction": "outbound",
-      "throughput": "800 req/min",
       "order": 2,
       "label": "user data",
       "points": [
@@ -438,10 +394,9 @@ Gruppe „user registration“
     {
       "from": "S1",
       "to": "DB1",
-      "type": "http",
-      "interface": { "id": "DB1_user_data", "prot": "JDBC" },
+      "id": "DB1_user_data",
+      "protocol": "JDBC",
       "direction": "outbound",
-      "throughput": "200 req/min",
       "order": 3,
       "label": "user data"
     }
@@ -460,10 +415,9 @@ Gruppe „processing payments“ mit inbound‑Beispiel
     {
       "from": "SCHED1",
       "to": "S3",
-      "type": "http",
-      "interface": { "id": "S3_check_queue", "prot": "REST/HTTPS" },
+      "id": "S3_check_queue",
+      "protocol": "REST/HTTPS",
       "direction": "outbound",
-      "throughput": "150 req/s",
       "order": 1,
       "label": "check queue",
       "begin": "y+",
@@ -478,10 +432,9 @@ Gruppe „processing payments“ mit inbound‑Beispiel
     {
       "from": "S3",
       "to": "Q1",
-      "type": "amqp",
-      "interface": { "id": "Q1_order_messages", "prot": "amqp" },
+      "id": "Q1_order_messages",
+      "protocol": "amqp",
       "direction": "inbound",
-      "throughput": "50 req/s",
       "order": 2,
       "label": "order messages",
       "end": "z-",

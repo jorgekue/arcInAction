@@ -193,8 +193,8 @@ You can define the initial visibility mode in your model JSON under `settings`:
 - **Layered Architecture**: Organize components into architectural layers
 - **Connection Groups**: Group related connections for better organization
 - **Animated Data Flows**: Visualize data movement with animated spheres
-- **Interface Details Panel**: Shows interface metadata per current connection (`id`, `prot`)
-- **Interactive Details**: Click components to see metadata (owner, version, tech stack, criticality)
+- **Interface Details Panel**: Shows current connection details (`id`, `protocol`, `from`, `to`, `label`)
+- **Interactive Flow Navigation**: Step through connections via buttons and position slider
 - **Camera Presets**: Quick access to common viewing angles
 - **Grid System**: Optional grid for spatial reference
 

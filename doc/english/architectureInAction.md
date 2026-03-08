@@ -51,7 +51,7 @@ Animation script:
 - Data flow of `user registration` triggered via Play button.
 - Now focusing on the ConnectionGroups `creating orders` and `processing payments`
 - Data flow triggered via Play button.
-- Clicking on DB component displays metadata in the top right.
+- The current connection step shows details (id, protocol, from, to, label) in the top right panel.
 - Grid toggled on and off.
 - Model is changed.
 - Mouse interactions: rotate, pan, zoom
@@ -221,10 +221,9 @@ Each connection describes a connection between two components. Important aspects
     - `inbound`: animated data flows visually in reverse direction (from `to` to `from`).
 - **Path geometry**:
   - Optionally, a direct connection can additionally be routed via a list of 3D points (*Pathpoints*) to, for example, make an arc around other components or emphasize certain levels in the architecture.
-- **Technical details and load information**:
-  - `type` describes the technical connection type (e.g., **http**, **amqp**).
-  - `interface.prot` can be used for protocol/technology details (e.g., **REST/HTTPS**, **JDBC**).
-  - `throughput` can be used to specify load sizes (e.g., "800 req/min").
+- **Further communication details**:
+  - `id` can optionally be set with an interface ID.
+  - `protocol` can optionally be used for protocol/technology details (e.g., **REST/HTTPS**, **JDBC**).
   - An optional `label` serves to label the data flow animation.
 
 > A detailed description of all connection attributes (incl. `begin`, `end`, `points`) can be found in the **Modeling Instructions for aia Models**, see references below.
@@ -254,12 +253,16 @@ The animation is controlled via the control panel **in the lower center**:
 
 - **Play**  
   Starts the automatic sequence of defined data flows according to the connection order in the active ConnectionGroups.
+- **Start**  
+  Jumps to the first connection in the active sequence without starting auto-play.
 - **Stop**  
   Ends the automatic animation.
 - **Next**  
   Advances to the next step / next connection.
 - **Prev.**  
   Goes back to the previous connection.
+- **End**  
+  Jumps to the last connection in the active sequence without starting auto-play.
 
 ![Animation Controls](/doc/img/animationControls.gif)
 
@@ -283,7 +286,7 @@ In VS Code, GitHub agents (e.g., in "Build with Agent Mode") can be set up as sp
   - from PlantUML sequence diagrams  
   automatically generate **aia-compliant JSON models**.
 
-Routine tasks such as creating layers, standard types (`frontend`, `service`, `database`), ID schemas (e.g., `UI1`, `S1`, `DB1`) and metadata (e.g., "Java/JEE") are handled by the agent. The modeler focuses more on business structure and relationships.
+Routine tasks such as creating layers, standard types (`frontend`, `service`, `database`) and ID schemas (e.g., `UI1`, `S1`, `DB1`) are handled by the agent. The modeler focuses more on business structure and relationships.
 
 ## PlantUML as Source and Intermediate Format
 
@@ -294,7 +297,7 @@ Many teams already use **PlantUML sequence diagrams** to describe processes betw
    - assigning participants (actor, participant, database) to appropriate layers and types,
    - generating IDs and labels according to modeling conventions,
    - converting messages in the sequence diagram into `connectionGroups` and `connections`.
-3. The resulting model is loaded in the `aia` viewer and manually supplemented as needed (layout, additional flows, metadata).
+3. The resulting model is loaded in the `aia` viewer and manually supplemented as needed (layout, additional flows).
 
 Thus, PlantUML serves as a **compact, textual description**, while the agent handles the translation into the detailed JSON. Changes are primarily made in the sequence diagram and are converted again into a current `aia` model as needed.
 

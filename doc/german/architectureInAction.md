@@ -51,7 +51,7 @@ Skript der Animation:
 - Datenfluss der `user registration` per Play-Button ausgelöst.
 - Nun Fokussierung auf die ConnectionGroup `creating orders` und `processing payments`
 - Datenfluss per Play-Button ausgelöst.
-- Per Klick auf DB-Komponente Anzeige der Metadaten oben rechts.
+- Im rechten oberen Panel werden pro aktuellem Verbindungsschritt Details angezeigt (id, protocol, from, to, label).
 - Grid an- und ausgeschaltet.
 - Modell wird geändert.
 - Mausinteraktionen: Drehen, verschieben, zoomen
@@ -221,9 +221,9 @@ Jede Connection beschreibt eine Verbindung zwischen zwei Komponenten. Wichtige A
     - `inbound`: animierte Daten fließen visuell in umgekehrter Richtung (von `to` nach `from`).
 - **Pfadgeometrie**:
   - Optional kann eine direkte Verbindung zusätzlich über eine Liste von 3D‑Punkten (*Pathpoints*) geführt werden, um z.B. einen Bogen um andere Komponenten herum zu machen oder bestimmte Ebenen in der Architektur zu betonen.
-- **weitere Interface Details**:
-  - `interface.id` kann optional mit einer Schnittstellen-ID belegt werden.
-  - `interface.prot` kann optional für Protokoll-/Technologieangaben genutzt werden (z.B. **REST/HTTPS**, **JDBC**).
+- **weitere Details zur Kommunikation**:
+  - `id` kann optional mit einer Schnittstellen-ID belegt werden.
+  - `protocol` kann optional für Protokoll-/Technologieangaben genutzt werden (z.B. **REST/HTTPS**, **JDBC**).
   - Ein optionales `label` dient zur Beschriftung bei der Datenflußanimation.
 
 > Eine detaillierte Beschreibung aller Connection‑Attribute (inkl. `begin`, `end`, `points`) findet sich in der **Modellierungsanleitung für aia‑Modelle**, siehe Referenzen unten.
@@ -252,12 +252,16 @@ Die Animation wird über das Schalterfeld **unten mittig** gesteuert:
 - Panelaufbau (oben → unten): Current-Component-Text, Steuerungsbuttons, Positions-Slider.
 - **Play**  
   Startet die automatische Abfolge der definierten Datenflüsse entsprechend der Connection‑Reihenfolge in den aktiven ConnectionGroups.
+- **Start**  
+  Springt zur ersten Connection der aktiven Sequenz, ohne die automatische Wiedergabe zu starten.
 - **Stop**  
   Beendet die automatische Animation.
 - **Next**  
   Schaltet zum nächsten Schritt / zur nächsten Connection.
 - **Prev.**  
   Schaltet zurück zur vorherigen Connection.
+- **End**  
+  Springt zur letzten Connection der aktiven Sequenz, ohne die automatische Wiedergabe zu starten.
 
 ![Animationssteuerung](/doc/img/animationControls.gif)
 
@@ -281,7 +285,7 @@ In VS Code können GitHub‑Agenten (z.B. im „Build with Agent Mode“) als sp
   - aus PlantUML‑Sequenzdiagrammen  
   automatisch **aia‑konforme JSON‑Modelle** zu erzeugen.
 
-Routineaufgaben wie das Anlegen von Layern, Standard‑Typen (`frontend`, `service`, `database`), ID‑Schemata (z.B. `UI1`, `S1`, `DB1`) und Metadaten (z.B. „Java/JEE“) übernimmt der Agent. Der Modellierer fokussiert sich stärker auf fachliche Struktur und Beziehungen.
+Routineaufgaben wie das Anlegen von Layern, Standard‑Typen (`frontend`, `service`, `database`) und ID‑Schemata (z.B. `UI1`, `S1`, `DB1`) übernimmt der Agent. Der Modellierer fokussiert sich stärker auf fachliche Struktur und Beziehungen.
 
 ## PlantUML als Ausgangs- und Zwischenformat
 
@@ -292,7 +296,7 @@ Viele Teams nutzen bereits **PlantUML‑Sequenzdiagramme**, um Abläufe zwischen
    - Teilnehmer (actor, participant, database) passenden Layern und Typen zuordnet,
    - IDs und Labels gemäß der Modellierungskonventionen erzeugt,
    - die Nachrichten im Sequenzdiagramm in `connectionGroups` und `connections` überführt.
-3. Das resultierende Modell wird im `aia`‑Viewer geladen und bei Bedarf manuell ergänzt (Layout, weitere Flows, Metadaten).
+3. Das resultierende Modell wird im `aia`‑Viewer geladen und bei Bedarf manuell ergänzt (Layout, weitere Flows).
 
 Damit dient PlantUML als **kompakte, textuelle Beschreibung**, während der Agent die Übersetzung in das detaillierte JSON übernimmt. Änderungen erfolgen primär im Sequenzdiagramm und werden bei Bedarf erneut in ein aktuelles `aia`‑Modell überführt.
 

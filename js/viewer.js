@@ -399,9 +399,8 @@ function showInterfaceDetails(connection) {
         return;
     }
 
-    const interfaceMeta = connection.interface || {};
-    const id = formatInterfaceValue(interfaceMeta.id || '-');
-    const prot = formatInterfaceValue(interfaceMeta.prot || '-');
+    const id = formatInterfaceValue(connection.id || '-');
+    const protocol = formatInterfaceValue(connection.protocol || '-');
     const from = formatInterfaceValue(connection.from || '-');
     const to = formatInterfaceValue(connection.to || '-');
     const desc = formatInterfaceValue(connection.label || '-');
@@ -414,7 +413,7 @@ function showInterfaceDetails(connection) {
             </tr>
             <tr>
                 <td class="interface-key">Prot</td>
-                <td>${prot}</td>
+                <td>${protocol}</td>
             </tr>
             <tr>
                 <td class="interface-key">From</td>

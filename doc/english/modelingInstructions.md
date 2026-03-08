@@ -99,13 +99,7 @@ Example from the Business layer:
   "y": 0,
   "width": 2,
   "height": 1,
-  "depth": 1,
-  "metadata": {
-    "owner": "Team A",
-    "version": "1.3.5",
-    "tech": "Java/JEE",
-    "criticality": "high"
-  }
+  "depth": 1
 }
 ```
 Standard attributes of a component:
@@ -136,11 +130,7 @@ Example:
   "y": 0,
   "width": 1,
   "height": 2,
-  "depth": 1,
-  "metadata": {
-    "owner": "Business Area",
-    "tech": "N/A"
-  }
+  "depth": 1
 }
 ```
 
@@ -163,13 +153,7 @@ Example:
   "y": 0,
   "width": 3,
   "height": 2,
-  "depth": 1,
-  "metadata": {
-    "owner": "Frontend Team",
-    "version": "2.1.0",
-    "tech": "TypeScript/React",
-    "criticality": "medium"
-  }
+  "depth": 1
 }
 ```
 
@@ -190,13 +174,7 @@ Example:
   "y": 0,
   "width": 2,
   "height": 1,
-  "depth": 1,
-  "metadata": {
-    "owner": "Team A",
-    "version": "1.3.5",
-    "tech": "Java/JEE",
-    "criticality": "high"
-  }
+  "depth": 1
 }
 ```
 
@@ -215,13 +193,7 @@ Queue: type = "queue"
   "y": -3,
   "width": 2,
   "height": 2,
-  "depth": 2,
-  "metadata": {
-    "owner": "Integration Team",
-    "version": "N/A",
-    "tech": "Kafka",
-    "criticality": "medium"
-  }
+  "depth": 2
 }
 ```
 - Representation: Queue symbol (lying cylinder).
@@ -257,13 +229,7 @@ Example:
   "y": -1,
   "width": 2.5,
   "height": 2,
-  "depth": 2,
-  "metadata": {
-    "owner": "DBA Team",
-    "version": "13.0",
-    "tech": "PostgreSQL",
-    "criticality": "high"
-  }
+  "depth": 2
 }
 ```
 
@@ -313,9 +279,9 @@ Example:
 {
   "from": "S2",
   "to": "Q1",
-  "type": "http",
+  "id": "Dummy",
+  "protocol": "http",
   "direction": "outbound",
-  "throughput": "200 req/min",
   "order": 4,
   "label": "order message",
   "flowDuration": 5,
@@ -330,17 +296,14 @@ Standard attributes:
 
 - `from (string, required)`: ID of the source component (e.g., "S2").
 - `to (string, required)`: ID of the target component (e.g., "Q1").
-- `type (string)`: Type of connection (e.g., "http", "amqp").
+- `id (string, optional)`: Interface/connection identifier (e.g., "Dummy", "IMS-1.11").
+- `protocol (string, optional)`: Protocol/technology detail (e.g., "REST/HTTPS", "amqp").
 - `direction (string, optional)`: Direction of data flow:
   - `"outbound"`: Data from from → to (default).
   - `"inbound"`: Data visually from to → from (path reversed).
-- `throughput (string, optional)`: Load description, e.g., "800 req/min", "50 req/s".
 - `order (number, optional)`: Order within the group.
 - `label (string, optional)`: Label of the connection.
 - `flowDuration (number, optional)`: Custom animation time in seconds for this specific connection. This value overrides global timing settings.
-- `interface (object, optional)`: Interface details shown in the top-right **Interface** panel for the current connection step. Supported keys:
-  - `id`: Interface identifier
-  - `prot`: Protocol (short form)
 
 Global flow animation settings (optional, in JSON root under `settings`):
 
@@ -409,20 +372,18 @@ Group "user registration"
     {
       "from": "U1",
       "to": "UI1",
-      "type": "http",
-      "interface": { "id": "UI1_user_data", "prot": "HTTPS" },
+      "id": "UI1_user_data",
+      "protocol": "HTTPS",
       "direction": "outbound",
-      "throughput": "800 req/min",
       "order": 1,
       "label": "user data"
     },
     {
       "from": "UI1",
       "to": "S1",
-      "type": "http",
-      "interface": { "id": "S1_user_data", "prot": "REST/HTTPS" },
+      "id": "S1_user_data",
+      "protocol": "REST/HTTPS",
       "direction": "outbound",
-      "throughput": "800 req/min",
       "order": 2,
       "label": "user data",
       "points": [
@@ -433,10 +394,9 @@ Group "user registration"
     {
       "from": "S1",
       "to": "DB1",
-      "type": "http",
-      "interface": { "id": "DB1_user_data", "prot": "JDBC" },
+      "id": "DB1_user_data",
+      "protocol": "JDBC",
       "direction": "outbound",
-      "throughput": "200 req/min",
       "order": 3,
       "label": "user data"
     }
@@ -455,10 +415,9 @@ Group "processing payments" with inbound example
     {
       "from": "SCHED1",
       "to": "S3",
-      "type": "http",
-      "interface": { "id": "S3_check_queue", "prot": "REST/HTTPS" },
+      "id": "S3_check_queue",
+      "protocol": "REST/HTTPS",
       "direction": "outbound",
-      "throughput": "150 req/s",
       "order": 1,
       "label": "check queue",
       "begin": "y+",
@@ -473,10 +432,9 @@ Group "processing payments" with inbound example
     {
       "from": "S3",
       "to": "Q1",
-      "type": "amqp",
-      "interface": { "id": "Q1_order_messages", "prot": "amqp" },
+      "id": "Q1_order_messages",
+      "protocol": "amqp",
       "direction": "inbound",
-      "throughput": "50 req/s",
       "order": 2,
       "label": "order messages",
       "end": "z-",

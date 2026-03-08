@@ -1,4 +1,4 @@
-{
+﻿{
   "layers": [
     {
       "name": "Presentation",
@@ -12,13 +12,7 @@
           "y": 0,
           "width": 3,
           "height": 2,
-          "depth": 1,
-          "metadata": {
-            "owner": "Team Frontend",
-            "version": "1.0.0",
-            "tech": "TypeScript/React",
-            "criticality": "medium"
-          }
+          "depth": 1
         }
       ]
     },
@@ -34,13 +28,7 @@
           "y": 0,
           "width": 2,
           "height": 1,
-          "depth": 1,
-          "metadata": {
-            "owner": "Team Backend",
-            "version": "1.0.0",
-            "tech": "Java/JEE",
-            "criticality": "high"
-          }
+          "depth": 1
         }
       ]
     },
@@ -56,13 +44,7 @@
           "y": -1,
           "width": 2.5,
           "height": 2,
-          "depth": 2,
-          "metadata": {
-            "owner": "DBA Team",
-            "version": "13.0",
-            "tech": "PostgreSQL",
-            "criticality": "high"
-          }
+          "depth": 2
         }
       ]
     }
@@ -77,22 +59,20 @@
         {
           "from": "UI1",
           "to": "S1",
-          "type": "http",
           "protocol": "REST/HTTPS",
           "direction": "outbound",
-          "throughput": "120 req/min",
           "order": 1,
-          "label": "order requests"
+          "label": "order requests",
+          "id": "Dummy"
         },
         {
           "from": "S1",
           "to": "DB1",
-          "type": "http",
           "protocol": "JDBC",
           "direction": "outbound",
-          "throughput": "80 req/min",
           "order": 2,
-          "label": "order data"
+          "label": "order data",
+          "id": "Dummy"
         }
       ]
     }
