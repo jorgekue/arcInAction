@@ -11,13 +11,13 @@
 <body>
     <!-- Interaction hints (top left) -->
     <div id="info">
-        Mouse: rotate · Mouse wheel: zoom · Shift+Mouse: pan · Click: details
+        Mouse: rotate · Mouse wheel: zoom · Shift+Mouse: pan · Click: interface
     </div>
 
-    <!-- Component details panel (top right) -->
+    <!-- Interface panel (top right) -->
     <div id="details">
-        <b>Details</b><br>
-        <span id="details-content">No selection</span>
+        <b>Interface</b><br>
+        <span id="details-content">No Interface details available</span>
     </div>
 
     <!-- File input control (bottom right) -->
@@ -38,13 +38,20 @@
 
     <!-- Data flow animation controls -->
     <div id="flow-controls">
-        <button id="btn-flow-start" class="flow-icon-btn" title="Start" aria-label="Start">|&lt;</button>
-        <button id="btn-flow-prev" class="flow-icon-btn" title="Prev" aria-label="Prev">&lt;</button>
-        <button id="btn-flow-play" class="flow-icon-btn" title="Play" aria-label="Play">▶</button>
-        <button id="btn-flow-replay" class="flow-icon-btn" title="Replay" aria-label="Replay">↻</button>
-        <button id="btn-flow-stop" class="flow-icon-btn" title="Stop" aria-label="Stop">■</button>
-        <button id="btn-flow-next" class="flow-icon-btn" title="Next" aria-label="Next">&gt;</button>
-        <button id="btn-flow-end" class="flow-icon-btn" title="End" aria-label="End">&gt;|</button>
+        <div id="flow-current-component">Current component: -</div>
+        <div id="flow-buttons">
+            <button id="btn-flow-start" class="flow-icon-btn" title="Start" aria-label="Start">|&lt;</button>
+            <button id="btn-flow-prev" class="flow-icon-btn" title="Prev" aria-label="Prev">&lt;</button>
+            <button id="btn-flow-play" class="flow-icon-btn" title="Play" aria-label="Play">▶</button>
+            <button id="btn-flow-replay" class="flow-icon-btn" title="Replay" aria-label="Replay">↻</button>
+            <button id="btn-flow-stop" class="flow-icon-btn" title="Stop" aria-label="Stop">■</button>
+            <button id="btn-flow-next" class="flow-icon-btn" title="Next" aria-label="Next">&gt;</button>
+            <button id="btn-flow-end" class="flow-icon-btn" title="End" aria-label="End">&gt;|</button>
+        </div>
+        <div id="flow-position-control">
+            <input id="flow-position-slider" type="range" min="0" max="0" value="0" step="1" aria-label="Connection position" />
+            <span id="flow-position-value">0 / 0</span>
+        </div>
     </div>
 
     <!-- Connection groups panel -->
@@ -61,6 +68,10 @@
         <label class="view-panel-item">
             <input type="checkbox" id="chk-view-grid" />
             <span>Show grid</span>
+        </label>
+        <label class="view-panel-item">
+            <input type="checkbox" id="chk-view-component-position" />
+            <span>Show component position</span>
         </label>
             <button id="btn-impressum" class="view-panel-button">
                 About

@@ -319,7 +319,6 @@ Beispiel:
   "from": "S2",
   "to": "Q1",
   "type": "http",
-  "protocol": "REST/HTTPS",
   "direction": "outbound",
   "throughput": "200 req/min",
   "order": 4,
@@ -337,7 +336,6 @@ Standard‑Attribute:
 - `from (string, Pflicht)`: ID der Quell‑Komponente (z.B. "S2").
 - `to (string, Pflicht)`: ID der Ziel‑Komponente (z.B. "Q1").
 - `type (string)`: Art der Verbindung (z.B. "http", "amqp").
-- `protocol (string)`: Protokoll/Technologie (z.B. "HTTPS", "REST/HTTPS", "JDBC", "amqp").
 - `direction (string, optional)`: Richtung des Datenflusses:
   - `"outbound"`: Daten von from → to (Default).
   - `"inbound"`: Daten visuell von to → from (Pfad rückwärts).
@@ -345,6 +343,9 @@ Standard‑Attribute:
 - `order (number, optional)`: Reihenfolge innerhalb der Gruppe.
 - `label (string, optional)`: Beschriftung der Verbindung.
 - `flowDuration (number, optional)`: Eigene Animationsdauer in Sekunden für diese konkrete Verbindung. Dieser Wert überstimmt die globalen Animationseinstellungen.
+- `interface (object, optional)`: Interface‑Details, die im rechten oberen **Interface**‑Panel für den aktuellen Verbindungsschritt angezeigt werden. Unterstützte Keys:
+  - `id`: Interface‑Identifier
+  - `prot`: Protokoll (Kurzform)
 
 Globale Datenfluss‑Einstellungen (optional, im JSON‑Root unter `settings`):
 
@@ -414,7 +415,7 @@ Gruppe „user registration“
       "from": "U1",
       "to": "UI1",
       "type": "http",
-      "protocol": "HTTPS",
+      "interface": { "id": "UI1_user_data", "prot": "HTTPS" },
       "direction": "outbound",
       "throughput": "800 req/min",
       "order": 1,
@@ -424,7 +425,7 @@ Gruppe „user registration“
       "from": "UI1",
       "to": "S1",
       "type": "http",
-      "protocol": "REST/HTTPS",
+      "interface": { "id": "S1_user_data", "prot": "REST/HTTPS" },
       "direction": "outbound",
       "throughput": "800 req/min",
       "order": 2,
@@ -438,7 +439,7 @@ Gruppe „user registration“
       "from": "S1",
       "to": "DB1",
       "type": "http",
-      "protocol": "JDBC",
+      "interface": { "id": "DB1_user_data", "prot": "JDBC" },
       "direction": "outbound",
       "throughput": "200 req/min",
       "order": 3,
@@ -460,7 +461,7 @@ Gruppe „processing payments“ mit inbound‑Beispiel
       "from": "SCHED1",
       "to": "S3",
       "type": "http",
-      "protocol": "REST/HTTPS",
+      "interface": { "id": "S3_check_queue", "prot": "REST/HTTPS" },
       "direction": "outbound",
       "throughput": "150 req/s",
       "order": 1,
@@ -478,7 +479,7 @@ Gruppe „processing payments“ mit inbound‑Beispiel
       "from": "S3",
       "to": "Q1",
       "type": "amqp",
-      "protocol": "amqp",
+      "interface": { "id": "Q1_order_messages", "prot": "amqp" },
       "direction": "inbound",
       "throughput": "50 req/s",
       "order": 2,

@@ -115,9 +115,6 @@ Jede Komponente besitzt u.a.:
 - Position und Größe (`x`, `y`, `width`, `height`, `depth`)
 - ein **Label** für die Darstellung (Zeilenumbrüche über `\n`, z.B. `"User\nService"`)
 - einen **Type**, der die Form der Visualisierung bestimmt (z.B. `service`, `database`, `queue`, `actor`, `scheduler`)
-- **Metadata** mit zusätzlichen Informationen (z.B. `owner`, `version`, `tech`, `criticality`)
-
-Die Metadaten werden beim Klick auf eine Komponente **oben rechts** im Viewer angezeigt und erlauben so den Zugriff auf weitere Informationen ohne das Bild zu überfrachten.
 
 > **Details zum JSON‑Aufbau (Attribute, Typen, Beispiele)**  
 > siehe **Modellierungsanleitung für aia‑Modelle** in den Referenzen.
@@ -224,9 +221,9 @@ Jede Connection beschreibt eine Verbindung zwischen zwei Komponenten. Wichtige A
     - `inbound`: animierte Daten fließen visuell in umgekehrter Richtung (von `to` nach `from`).
 - **Pfadgeometrie**:
   - Optional kann eine direkte Verbindung zusätzlich über eine Liste von 3D‑Punkten (*Pathpoints*) geführt werden, um z.B. einen Bogen um andere Komponenten herum zu machen oder bestimmte Ebenen in der Architektur zu betonen.
-- **Technische Details und Lastinformationen**:
-  - `type` und `protocol` beschreiben die Art und Technologie der Verbindung (z.B. **REST/HTTPS**, **amqp**, **JDBC**).
-  - `throughput` kann verwendet werden, um Lastgrößen (z.B. „800 req/min“) anzugeben.
+- **weitere Interface Details**:
+  - `interface.id` kann optional mit einer Schnittstellen-ID belegt werden.
+  - `interface.prot` kann optional für Protokoll-/Technologieangaben genutzt werden (z.B. **REST/HTTPS**, **JDBC**).
   - Ein optionales `label` dient zur Beschriftung bei der Datenflußanimation.
 
 > Eine detaillierte Beschreibung aller Connection‑Attribute (inkl. `begin`, `end`, `points`) findet sich in der **Modellierungsanleitung für aia‑Modelle**, siehe Referenzen unten.
@@ -252,6 +249,7 @@ Damit kann man:
 
 Die Animation wird über das Schalterfeld **unten mittig** gesteuert:
 
+- Panelaufbau (oben → unten): Current-Component-Text, Steuerungsbuttons, Positions-Slider.
 - **Play**  
   Startet die automatische Abfolge der definierten Datenflüsse entsprechend der Connection‑Reihenfolge in den aktiven ConnectionGroups.
 - **Stop**  

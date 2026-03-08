@@ -56,10 +56,11 @@ const modelFlowTimingSettings = {
     flowSpeed: 2.5
 };
 
-/** @type {{animateComponents: boolean, selectConnectionsAndComponents: boolean}} Global visual settings from model.settings */
+/** @type {{animateComponents: boolean, selectConnectionsAndComponents: boolean, showComponentPosition: boolean}} Global visual settings from model.settings */
 const modelVisualSettings = {
     animateComponents: true,
-    selectConnectionsAndComponents: false
+    selectConnectionsAndComponents: false,
+    showComponentPosition: true
 };
 
 /**
@@ -67,6 +68,7 @@ const modelVisualSettings = {
  * @type {Array<{name: string, file: string}>}
  */
 const defaultModelFiles = [
+    { name: 'Meldeliste einreichen', file: 'model/meldelisteEinreichen-modell.json' },
     { name: 'Standard model', file: 'model.json' },
     { name: 'Simple model', file: 'simple-model.json' }
 ];
@@ -75,7 +77,8 @@ const defaultModelFiles = [
 const modelFiles = [...defaultModelFiles];
 
 /** @type {string} Currently loaded model file name */
-let currentModelFile = 'model.json';
+let currentModelFile = 'model/meldelisteEinreichen-modell.json';
+
 
 /**
  * Parses a .properties text content into key/value pairs.
@@ -373,45 +376,190 @@ let modelData = null;
 /** @type {THREE.Mesh|null} Last highlighted mesh */
 let lastHighlight = null;
 
+/** @type {THREE.Mesh|null} Ring marker for current source component */
+let currentFromComponentMarker = null;
+
+/** @type {THREE.Mesh|null} Ring marker for current target component */
+let currentToComponentMarker = null;
+
 // ============================================================================
-// Component Details and Highlighting
+// Interface Details and Highlighting
 // ============================================================================
 
 /**
- * Displays component details in the UI panel.
- * @param {Object} component - Component data object
- * @param {string} [component.label] - Component label
- * @param {string} [component.id] - Component ID
- * @param {string} [component.type] - Component type
- * @param {number} [component.x] - X position
- * @param {number} [component.y] - Y position
- * @param {number} [component.layerZ] - Layer Z coordinate
- * @param {Object} [component.metadata] - Component metadata
+ * Displays interface metadata for the selected connection.
+ * @param {Object|null} connection - Connection data object
  */
-function showDetails(component) {
+function showInterfaceDetails(connection) {
     const el = document.getElementById('details-content');
-    const meta = component.metadata || {};
+    if (!el) return;
+
+    if (!connection) {
+        el.innerHTML = 'No Interface details available';
+        return;
+    }
+
+    const interfaceMeta = connection.interface || {};
+    const id = formatInterfaceValue(interfaceMeta.id || '-');
+    const prot = formatInterfaceValue(interfaceMeta.prot || '-');
+    const from = formatInterfaceValue(connection.from || '-');
+    const to = formatInterfaceValue(connection.to || '-');
+    const desc = formatInterfaceValue(connection.label || '-');
 
     el.innerHTML = `
-        <b>${component.label || component.id}</b><br>
-                Type: ${component.type || '-'}<br>
-                Position: x=${component.x ?? 0}, y=${component.y ?? 0}<br>
-        Layer-Z: ${component.layerZ ?? '-'}<br>
-        <br>
-                <b>Metadata</b><br>
-        Owner: ${meta.owner || '-'}<br>
-        Version: ${meta.version || '-'}<br>
-        Tech: ${meta.tech || '-'}<br>
-                Criticality: ${meta.criticality || '-'}
+        <table class="interface-table">
+            <tr>
+                <td class="interface-key">Id</td>
+                <td>${id}</td>
+            </tr>
+            <tr>
+                <td class="interface-key">Prot</td>
+                <td>${prot}</td>
+            </tr>
+            <tr>
+                <td class="interface-key">From</td>
+                <td>${from}</td>
+            </tr>
+            <tr>
+                <td class="interface-key">To</td>
+                <td>${to}</td>
+            </tr>
+            <tr>
+                <td class="interface-key">Desc</td>
+                <td>${desc}</td>
+            </tr>
+        </table>
       `;
 }
 
 /**
- * Clears the details panel.
+ * Resolves a component ID to its display label.
+ * Falls back to the raw value when no component is found.
+ * @param {string|undefined|null} componentId - Component ID
+ * @returns {string} Component label or fallback value
  */
-function clearDetails() {
+function resolveComponentDisplayName(componentId) {
+    if (!componentId) {
+        return '-';
+    }
+
+    const entry = componentMeshes.get(componentId);
+    const label = entry?.data?.label;
+
+    if (typeof label === 'string' && label.trim()) {
+        return label;
+    }
+
+    return String(componentId);
+}
+
+/**
+ * Formats interface values for safe HTML rendering and multiline display.
+ * Supports both escaped "\\n" and actual CR/LF characters.
+ * @param {string|number} value - Raw interface value
+ * @returns {string} HTML-safe text with <br> line breaks
+ */
+function formatInterfaceValue(value) {
+        return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\\n|\r\n|\r|\n/g, '<br>');
+}
+
+/**
+ * Clears the interface panel.
+ */
+function clearInterfaceDetails() {
     const el = document.getElementById('details-content');
-    el.innerHTML = 'No selection';
+    if (!el) return;
+    el.innerHTML = 'No Interface details available';
+}
+
+/**
+ * Removes current target component marker from scene.
+ */
+function clearCurrentComponentMarker() {
+    const disposeMarker = (marker) => {
+        if (!marker) {
+            return;
+        }
+        scene.remove(marker);
+        marker.geometry?.dispose?.();
+        marker.material?.dispose?.();
+    };
+
+    disposeMarker(currentFromComponentMarker);
+    disposeMarker(currentToComponentMarker);
+    currentFromComponentMarker = null;
+    currentToComponentMarker = null;
+}
+
+/**
+ * Updates flow panel text and ring marker for current target component.
+ * @param {Object|null} connection - Currently selected connection
+ */
+function updateCurrentComponentIndicator(connection) {
+    const indicator = document.getElementById('flow-current-component');
+    const fromId = connection?.from;
+    const targetId = connection?.to;
+
+    if (!targetId) {
+        if (indicator) {
+            indicator.textContent = 'Current component: -';
+        }
+        clearCurrentComponentMarker();
+        return;
+    }
+
+    if (!modelVisualSettings.showComponentPosition) {
+        clearCurrentComponentMarker();
+        return;
+    }
+
+    const componentName = resolveComponentDisplayName(targetId);
+    if (indicator) {
+        indicator.innerHTML = `Current component: ${formatInterfaceValue(componentName)}`;
+    }
+
+    clearCurrentComponentMarker();
+
+    const createRingMarker = (componentId, color, radiusScale, ringWidth) => {
+        if (!componentId) {
+            return null;
+        }
+
+        const entry = componentMeshes.get(componentId);
+        if (!entry?.mesh) {
+            return null;
+        }
+
+        const bbox = new THREE.Box3().setFromObject(entry.mesh);
+        const size = bbox.getSize(new THREE.Vector3());
+        const center = bbox.getCenter(new THREE.Vector3());
+
+        const outerRadius = Math.max(0.25, Math.max(size.x, size.z) * radiusScale);
+        const innerRadius = Math.max(0.16, outerRadius - ringWidth);
+
+        const markerGeometry = new THREE.RingGeometry(innerRadius, outerRadius, 48);
+        const markerMaterial = new THREE.MeshBasicMaterial({
+            color,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide,
+            depthTest: true,
+            depthWrite: false
+        });
+
+        const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+        marker.rotation.x = -Math.PI / 2;
+        marker.position.set(center.x, bbox.min.y + 0.03, center.z);
+        scene.add(marker);
+        return marker;
+    };
+
+    currentFromComponentMarker = createRingMarker(fromId, 0x00bfff, 0.48, 0.06);
+    currentToComponentMarker = createRingMarker(targetId, 0xffd400, 0.62, 0.08);
 }
 
 /**
@@ -456,7 +604,9 @@ function clearScene() {
     componentCenters.clear();
     componentMeshes.clear();
     activeComponentFlowCounts.clear();
-    clearDetails();
+    clearCurrentComponentMarker();
+    updateCurrentComponentIndicator(null);
+    clearInterfaceDetails();
     clearHighlight();
 }
 
@@ -584,6 +734,19 @@ function deactivateComponentsForFlow(componentIds) {
 // ============================================================================
 // Component Creation
 // ============================================================================
+
+/**
+ * Normalizes component label text so line breaks render reliably.
+ * Supports actual CR/LF and escaped variants like "\\n".
+ * @param {string} text - Raw label text
+ * @returns {string} Normalized label text
+ */
+function normalizeComponentLabelText(text) {
+    return String(text)
+        .replace(/\\\\n/g, '\n')
+        .replace(/\\n/g, '\n')
+        .replace(/\r\n|\r/g, '\n');
+}
 
 /**
  * Creates 3D meshes for all components in the model.
@@ -905,7 +1068,7 @@ function createComponents(model) {
             // Attach label to mesh (not to scene)
             // addComponentLabel(mesh, c.label || c.id, labelDir);
 
-            const labelText = c.label || c.id;
+            const labelText = normalizeComponentLabelText(c.label || c.id);
 
             if (labelText && LABEL.globalFont) {
                 if (c.type === 'database') {
@@ -1323,6 +1486,28 @@ function updateCurrentConnectionMarker() {
 
         setConnectionSelectionStyle(obj);
     });
+
+    const selectedLine =
+        currentSelectedConnectionIndex >= 0 &&
+        currentSelectedConnectionIndex < connectionSequence.length
+            ? connectionSequence[currentSelectedConnectionIndex]
+            : null;
+
+    const hasPredecessor =
+        currentSelectedConnectionIndex > 0 ||
+        (currentSelectedConnectionIndex === 0 && currentConnectionIndex > 0);
+    const selectedLineConnection = selectedLine?.userData?.connection || null;
+    const selectedConnection = hasPredecessor
+        ? selectedLineConnection
+        : null;
+    const markerConnection = selectedConnection ||
+        (connectionSequence.length > 0
+            ? (connectionSequence[0]?.userData?.connection || null)
+            : null);
+
+    showInterfaceDetails(selectedConnection);
+    updateCurrentComponentIndicator(markerConnection);
+    updateFlowPositionControl();
 }
 
 /**
@@ -1382,6 +1567,11 @@ function rebuildConnectionSequence() {
         });
     });
 
+    if (connectionSequence.length > 0) {
+        currentSelectedConnectionIndex = 0;
+        currentConnectionIndex = 0;
+    }
+
     console.log('rebuildConnectionSequence: sequence length', connectionSequence.length);
     updateCurrentConnectionMarker();
     updateFlowControlButtons();
@@ -1404,7 +1594,8 @@ function applyFlowTimingSettingsFromModel(model) {
     modelFlowTimingSettings.flowDurationMin = 3;
     modelFlowTimingSettings.flowSpeed = 2.5;
     modelVisualSettings.animateComponents = true;
-     modelVisualSettings.selectConnectionsAndComponents = false;
+    modelVisualSettings.selectConnectionsAndComponents = false;
+    modelVisualSettings.showComponentPosition = true;
 
     const settings = model && typeof model.settings === 'object' ? model.settings : null;
     if (!settings) {
@@ -1427,6 +1618,10 @@ function applyFlowTimingSettingsFromModel(model) {
 
     if (typeof settings.selectConnectionsAndComponents === 'boolean') {
         modelVisualSettings.selectConnectionsAndComponents = settings.selectConnectionsAndComponents;
+    }
+
+    if (typeof settings.showComponentPosition === 'boolean') {
+        modelVisualSettings.showComponentPosition = settings.showComponentPosition;
     }
 }
 
@@ -1746,6 +1941,7 @@ function initFlowControls() {
     const btnStop = document.getElementById('btn-flow-stop');
     const btnNext = document.getElementById('btn-flow-next');
     const btnEnd = document.getElementById('btn-flow-end');
+    const positionSlider = document.getElementById('flow-position-slider');
 
     if (!btnStart || !btnPrev || !btnPlay || !btnReplay || !btnStop || !btnNext || !btnEnd) {
         console.warn('Flow control buttons not found');
@@ -1785,7 +1981,48 @@ function initFlowControls() {
         playFromEndStep();
     });
 
+    if (positionSlider) {
+        positionSlider.addEventListener('input', () => {
+            const targetIndex = Number(positionSlider.value);
+            if (!Number.isFinite(targetIndex)) {
+                return;
+            }
+            setCurrentConnectionPosition(targetIndex);
+        });
+    }
+
     updateFlowControlButtons();
+}
+
+/**
+ * Updates slider state for current connection position.
+ */
+function updateFlowPositionControl() {
+    const positionSlider = document.getElementById('flow-position-slider');
+    const positionValue = document.getElementById('flow-position-value');
+    if (!positionSlider || !positionValue) {
+        return;
+    }
+
+    const total = connectionSequence.length;
+    if (total <= 0) {
+        positionSlider.min = '0';
+        positionSlider.max = '0';
+        positionSlider.value = '0';
+        positionSlider.disabled = true;
+        positionValue.textContent = '0 / 0';
+        return;
+    }
+
+    const selectedIndex = currentSelectedConnectionIndex >= 0
+        ? Math.min(currentSelectedConnectionIndex, total - 1)
+        : 0;
+
+    positionSlider.min = '0';
+    positionSlider.max = String(total - 1);
+    positionSlider.value = String(selectedIndex);
+    positionSlider.disabled = flowController.isPlaying;
+    positionValue.textContent = `${selectedIndex + 1} / ${total}`;
 }
 
 /**
@@ -1793,14 +2030,18 @@ function initFlowControls() {
  */
 function initViewPanel() {
     const chkGrid = document.getElementById('chk-view-grid');
-    if (!chkGrid) {
-        console.warn('chk-view-grid not found');
+    const chkComponentPosition = document.getElementById('chk-view-component-position');
+
+    if (!chkGrid || !chkComponentPosition) {
+        console.warn('view panel controls not found');
         return;
     }
+
     LABEL.gridLabelsGroup.visible = false;
     LABEL.yAxisGroup.visible = false;
     gridHelper.visible = false;
-    chkGrid.checked = false
+    chkGrid.checked = false;
+    chkComponentPosition.checked = !!modelVisualSettings.showComponentPosition;
 
     chkGrid.addEventListener('change', () => {
         const visible = chkGrid.checked;
@@ -1814,6 +2055,11 @@ function initViewPanel() {
         if (LABEL.yAxisGroup) {
             LABEL.yAxisGroup.visible = visible;
         }
+    });
+
+    chkComponentPosition.addEventListener('change', () => {
+        modelVisualSettings.showComponentPosition = chkComponentPosition.checked;
+        updateCurrentConnectionMarker();
     });
 }
 
@@ -1850,6 +2096,8 @@ function updateFlowControlButtons() {
         btnNext.disabled = !hasConnections;
         btnEnd.disabled = !hasConnections;
     }
+
+    updateFlowPositionControl();
 }
 
 
@@ -1941,93 +2189,7 @@ function setCameraView(viewId, animate = true) {
 // User Interaction: Mouse Click
 // ============================================================================
 
-/** @type {THREE.Raycaster} Raycaster for mouse picking */
-const raycaster = new THREE.Raycaster();
-
-/** @type {THREE.Vector2} Mouse position in normalized device coordinates */
-const mouse = new THREE.Vector2();
-
-renderer.domElement.addEventListener('click', onClick, false);
-
-/**
- * Handles mouse click events on the 3D scene.
- * Supports clicking on components (shows details) and connections (starts animation).
- * @param {MouseEvent} event - Mouse click event
- */
-function onClick(event) {
-    const rect = renderer.domElement.getBoundingClientRect();
-    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(scene.children, true);
-
-    if (intersects.length === 0) {
-        clearDetails();
-        clearHighlight();
-        return;
-    }
-
-    const obj = intersects[0].object;
-    // 1. Komponenten-Klick wie bisher
-    const mesh = findComponentMesh(obj);
-    if (mesh && mesh.userData && mesh.userData.data) {
-        const comp = mesh.userData.data;
-        showDetails(comp);
-        highlightMesh(mesh);
-        return;
-    }
-
-
-    // 2. Verbindungslinie?
-    // if (obj.userData && obj.userData.type === 'connection') {
-    //     const sequenceIndex = connectionSequence.findIndex(line => line === obj);
-    //     if (sequenceIndex >= 0) {
-    //         currentSelectedConnectionIndex = sequenceIndex;
-    //         currentConnectionIndex = sequenceIndex + 1;
-    //         updateCurrentConnectionMarker();
-    //         updateFlowControlButtons();
-    //     }
-    //     startDataFlowOnConnection(obj, { loop: false });
-    //     return;
-    // }
-
-    // 3. Pfeil?
-    // if (obj.userData && obj.userData.type === 'connectionArrow') {
-    //     const sequenceIndex = connectionSequence.findIndex(line => {
-    //         const lineConn = line.userData?.connection;
-    //         const lineGroup = line.userData?.groupName || '';
-    //         const arrowConn = obj.userData?.connection;
-    //         const arrowGroup = obj.userData?.groupName || '';
-    //         return lineGroup === arrowGroup && isSameConnection(lineConn, arrowConn);
-    //     });
-    //     if (sequenceIndex >= 0) {
-    //         currentSelectedConnectionIndex = sequenceIndex;
-    //         currentConnectionIndex = sequenceIndex + 1;
-    //         updateCurrentConnectionMarker();
-    //         updateFlowControlButtons();
-    //     }
-    //     startDataFlowOnConnection(obj, { loop: false });
-    //     return;
-    // }
-
-    // sonst
-    clearDetails();
-    clearHighlight();
-}
-
-/**
- * Finds the component mesh by traversing up the object hierarchy.
- * @param {THREE.Object3D} obj - Object to start search from
- * @returns {THREE.Mesh|THREE.Group|null} Component mesh if found, null otherwise
- */
-function findComponentMesh(obj) {
-    let current = obj;
-    while (current && !current.userData?.data && current.parent) {
-        current = current.parent;
-    }
-    return current && current.userData?.data ? current : null;
-}
+// Intentionally no click-selection logic for the 3D canvas.
 
 // ============================================================================
 // Animation Loop
@@ -2307,13 +2469,13 @@ function setCurrentConnectionPosition(index) {
 
     const targetIndex = Math.max(0, Math.min(index, connectionSequence.length - 1));
     currentSelectedConnectionIndex = targetIndex;
-    currentConnectionIndex = targetIndex + 1;
+    currentConnectionIndex = targetIndex;
     updateCurrentConnectionMarker();
     updateFlowControlButtons();
 }
 
 /**
- * Sets playback to first active connection and plays it.
+ * Sets playback position to first active connection.
  */
 function playFromStartStep() {
     setCurrentConnectionPosition(0);
@@ -2328,7 +2490,7 @@ function replayCurrentStep() {
 }
 
 /**
- * Sets playback to last active connection and plays it.
+ * Sets playback position to last active connection.
  */
 function playFromEndStep() {
     setCurrentConnectionPosition(connectionSequence.length - 1);

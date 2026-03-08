@@ -116,11 +116,6 @@ Standard attributes of a component:
         Options: `"actor", "frontend", "service", "database", "queue", "scheduler"`.
 - `x, y (number)`: Position on the layer in the X/Y plane.
 - `width, height, depth (number)`: Dimensions of the 3D object (interpretation depends on type).
-- `metadata (object, optional)`: Additional information, e.g.:
-  - `owner`: responsible team/area
-  - `version`: technical version
-  - `tech`: technical basis (e.g., Java, TypeScript/React, Kafka)
-  - `criticality`: e.g., "high", "medium", "very high"
 
 Special attributes for some types:
 
@@ -319,7 +314,6 @@ Example:
   "from": "S2",
   "to": "Q1",
   "type": "http",
-  "protocol": "REST/HTTPS",
   "direction": "outbound",
   "throughput": "200 req/min",
   "order": 4,
@@ -337,7 +331,6 @@ Standard attributes:
 - `from (string, required)`: ID of the source component (e.g., "S2").
 - `to (string, required)`: ID of the target component (e.g., "Q1").
 - `type (string)`: Type of connection (e.g., "http", "amqp").
-- `protocol (string)`: Protocol/technology (e.g., "HTTPS", "REST/HTTPS", "JDBC", "amqp").
 - `direction (string, optional)`: Direction of data flow:
   - `"outbound"`: Data from from → to (default).
   - `"inbound"`: Data visually from to → from (path reversed).
@@ -345,6 +338,9 @@ Standard attributes:
 - `order (number, optional)`: Order within the group.
 - `label (string, optional)`: Label of the connection.
 - `flowDuration (number, optional)`: Custom animation time in seconds for this specific connection. This value overrides global timing settings.
+- `interface (object, optional)`: Interface details shown in the top-right **Interface** panel for the current connection step. Supported keys:
+  - `id`: Interface identifier
+  - `prot`: Protocol (short form)
 
 Global flow animation settings (optional, in JSON root under `settings`):
 
@@ -414,7 +410,7 @@ Group "user registration"
       "from": "U1",
       "to": "UI1",
       "type": "http",
-      "protocol": "HTTPS",
+      "interface": { "id": "UI1_user_data", "prot": "HTTPS" },
       "direction": "outbound",
       "throughput": "800 req/min",
       "order": 1,
@@ -424,7 +420,7 @@ Group "user registration"
       "from": "UI1",
       "to": "S1",
       "type": "http",
-      "protocol": "REST/HTTPS",
+      "interface": { "id": "S1_user_data", "prot": "REST/HTTPS" },
       "direction": "outbound",
       "throughput": "800 req/min",
       "order": 2,
@@ -438,7 +434,7 @@ Group "user registration"
       "from": "S1",
       "to": "DB1",
       "type": "http",
-      "protocol": "JDBC",
+      "interface": { "id": "DB1_user_data", "prot": "JDBC" },
       "direction": "outbound",
       "throughput": "200 req/min",
       "order": 3,
@@ -460,7 +456,7 @@ Group "processing payments" with inbound example
       "from": "SCHED1",
       "to": "S3",
       "type": "http",
-      "protocol": "REST/HTTPS",
+      "interface": { "id": "S3_check_queue", "prot": "REST/HTTPS" },
       "direction": "outbound",
       "throughput": "150 req/s",
       "order": 1,
@@ -478,7 +474,7 @@ Group "processing payments" with inbound example
       "from": "S3",
       "to": "Q1",
       "type": "amqp",
-      "protocol": "amqp",
+      "interface": { "id": "Q1_order_messages", "prot": "amqp" },
       "direction": "inbound",
       "throughput": "50 req/s",
       "order": 2,

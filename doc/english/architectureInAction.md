@@ -115,9 +115,6 @@ Each component has, among other things:
 - Position and size (`x`, `y`, `width`, `height`, `depth`)
 - a **Label** for display (line breaks via `\n`, e.g., `"User\nService"`)
 - a **Type** that determines the form of visualization (e.g., `service`, `database`, `queue`, `actor`, `scheduler`)
-- **Metadata** with additional information (e.g., `owner`, `version`, `tech`, `criticality`)
-
-The metadata is displayed **in the upper right** of the viewer when clicking on a component, allowing access to further information without overloading the image.
 
 > **Details on JSON structure (attributes, types, examples)**  
 > see **Modeling Instructions for aia Models** in the references.
@@ -225,7 +222,8 @@ Each connection describes a connection between two components. Important aspects
 - **Path geometry**:
   - Optionally, a direct connection can additionally be routed via a list of 3D points (*Pathpoints*) to, for example, make an arc around other components or emphasize certain levels in the architecture.
 - **Technical details and load information**:
-  - `type` and `protocol` describe the type and technology of the connection (e.g., **REST/HTTPS**, **amqp**, **JDBC**).
+  - `type` describes the technical connection type (e.g., **http**, **amqp**).
+  - `interface.prot` can be used for protocol/technology details (e.g., **REST/HTTPS**, **JDBC**).
   - `throughput` can be used to specify load sizes (e.g., "800 req/min").
   - An optional `label` serves to label the data flow animation.
 
@@ -251,6 +249,8 @@ This allows you to:
 ## Controlling the Data Flow Animation
 
 The animation is controlled via the control panel **in the lower center**:
+
+- Panel layout (top → bottom): current component text, control buttons, position slider.
 
 - **Play**  
   Starts the automatic sequence of defined data flows according to the connection order in the active ConnectionGroups.

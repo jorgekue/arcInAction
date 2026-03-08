@@ -31,6 +31,19 @@ body {
     font-size: 13px;
 }
 
+#details .interface-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#details .interface-key {
+    text-align: right;
+    font-style: italic;
+    vertical-align: top;
+    padding-right: 8px;
+    white-space: nowrap;
+}
+
 #controls {
     position: absolute;
     right: 10px;
@@ -124,6 +137,48 @@ body {
     color: #fff;
     font-family: sans-serif;
     font-size: 12px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+#flow-position-control {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#flow-position-slider {
+    width: 180px;
+}
+
+#flow-position-value {
+    min-width: 56px;
+    text-align: right;
+    font-size: 11px;
+    color: #ddd;
+}
+
+#flow-current-component {
+    width: 100%;
+    max-width: 300px;
+    text-align: center;
+    font-size: 11px;
+    line-height: 1.2;
+    color: #ddd;
+    min-height: calc(1.2em * 3);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    overflow-wrap: anywhere;
+}
+
+#flow-buttons {
+    display: flex;
+    align-items: center;
 }
 
 #flow-controls .flow-icon-btn {

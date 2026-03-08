@@ -1,4 +1,4 @@
-# architecture in action (aia)
+# architecture.0 in action (aia)
 
 A 3D/4D visualization tool for software architectures that combines component diagrams with sequence diagrams through animated data flows.
 
@@ -152,6 +152,8 @@ Notes:
    - **Play**: Start automatic animation through all connections
    - **Stop**: Stop the current animation
    - **Prev/Next**: Step through connections manually
+   - **Position Slider**: Set the current connection index manually (slider is shown below the control buttons)
+   - **Current Component**: Displayed above the buttons with a reserved 3-line area for stable layout
    - **Click on connections**: Trigger animation for a specific connection
 
 4. **View Controls**:
@@ -191,6 +193,7 @@ You can define the initial visibility mode in your model JSON under `settings`:
 - **Layered Architecture**: Organize components into architectural layers
 - **Connection Groups**: Group related connections for better organization
 - **Animated Data Flows**: Visualize data movement with animated spheres
+- **Interface Details Panel**: Shows interface metadata per current connection (`id`, `prot`)
 - **Interactive Details**: Click components to see metadata (owner, version, tech stack, criticality)
 - **Camera Presets**: Quick access to common viewing angles
 - **Grid System**: Optional grid for spatial reference
