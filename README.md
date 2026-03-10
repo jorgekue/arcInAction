@@ -2,12 +2,13 @@
 
 A 3D/4D visualization tool for software architectures that combines component diagrams with sequence diagrams through animated data flows.
 
-Current version: 1.1.0_Proto
+Current version: 1.2
 
 ## Release History
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.2 | 2026-03-10 | Schema simplification in models and viewer: connections now use `id` and `protocol`; removed connection `type` and `throughput`; removed component `metadata`; flow panel refinements (slider below buttons, 3-line current component area); improved source/target ring visibility and actor ring sizing; documentation updated (EN + DE). |
 | 1.1.0_Proto | 2026-03-01 | Connection Groups panel with fixed header and visibility mode (only connections / connections & components); optional model setting settings.selectConnectionsAndComponents (default false); UI text harmonized to English; documentation updated (EN + DE). |
 
 For upcoming releases, add new entries at the top of this table.
