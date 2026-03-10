@@ -68,7 +68,6 @@ const modelVisualSettings = {
  * @type {Array<{name: string, file: string}>}
  */
 const defaultModelFiles = [
-    { name: 'Meldeliste einreichen', file: 'model/meldelisteEinreichen-modell.json' },
     { name: 'Standard model', file: 'model.json' },
     { name: 'Simple model', file: 'simple-model.json' }
 ];
@@ -77,7 +76,7 @@ const defaultModelFiles = [
 const modelFiles = [...defaultModelFiles];
 
 /** @type {string} Currently loaded model file name */
-let currentModelFile = 'model/meldelisteEinreichen-modell.json';
+let currentModelFile = 'model/meldelisteEinreichen-model.json';
 
 
 /**
@@ -536,8 +535,14 @@ function updateCurrentComponentIndicator(connection) {
         const bbox = new THREE.Box3().setFromObject(entry.mesh);
         const size = bbox.getSize(new THREE.Vector3());
         const center = bbox.getCenter(new THREE.Vector3());
+        const componentType = entry.data?.type;
+        const isActorLike = componentType === 'actor' || componentType === 'person';
 
-        const outerRadius = Math.max(0.25, Math.max(size.x, size.z) * radiusScale);
+        const footprint = Math.max(size.x, size.z);
+        let outerRadius = Math.max(0.25, footprint * radiusScale);
+        if (isActorLike) {
+            outerRadius = Math.max(outerRadius, footprint * 0.75 + 0.06);
+        }
         const innerRadius = Math.max(0.16, outerRadius - ringWidth);
 
         const markerGeometry = new THREE.RingGeometry(innerRadius, outerRadius, 48);

@@ -10,7 +10,7 @@
                     "type": "actor",
                     "x": 0,
                     "y": 0,
-                    "width": 1,
+                    "width": 2,
                     "height": 2,
                     "depth": 1
                 }
@@ -134,8 +134,8 @@
                     "to": "UI1",
                     "protocol": "HTTPS",
                     "direction": "outbound",
-                    "order": 1,
-                    "label": "user data",
+                    "order": 101,
+                    "label": "user data1",
                     "id": "Dummy"
                 },
                 {
@@ -143,7 +143,7 @@
                     "to": "S1",
                     "protocol": "REST/HTTPS",
                     "direction": "outbound",
-                    "order": 2,
+                    "order": 102,
                     "label": "user data",
                     "points": [
                         {
@@ -164,7 +164,7 @@
                     "to": "DB1",
                     "protocol": "JDBC",
                     "direction": "outbound",
-                    "order": 3,
+                    "order": 103,
                     "label": "user data",
                     "id": "Dummy"
                 }
@@ -180,7 +180,7 @@
                     "to": "UI1",
                     "protocol": "HTTPS",
                     "direction": "outbound",
-                    "order": 1,
+                    "order": 201,
                     "label": "orders",
                     "id": "Dummy"
                 },
@@ -189,7 +189,7 @@
                     "to": "S2",
                     "protocol": "REST/HTTPS",
                     "direction": "outbound",
-                    "order": 2,
+                    "order": 202,
                     "label": "orders",
                     "points": [
                         {
@@ -210,7 +210,7 @@
                     "to": "DB2",
                     "protocol": "JDBC",
                     "direction": "outbound",
-                    "order": 3,
+                    "order": 203,
                     "label": "orders",
                     "id": "Dummy"
                 },
@@ -219,7 +219,7 @@
                     "to": "Q1",
                     "protocol": "REST/HTTPS",
                     "direction": "outbound",
-                    "order": 4,
+                    "order": 204,
                     "label": "order message",
                     "flowDuration": 5.0,
                     "points": [
@@ -253,7 +253,7 @@
                     "to": "S3",
                     "protocol": "REST/HTTPS",
                     "direction": "outbound",
-                    "order": 1,
+                    "order": 301,
                     "label": "check queue",
                     "begin": "z-",
                     "end": "x+",
@@ -282,7 +282,7 @@
                     "to": "Q1",
                     "protocol": "amqp",
                     "direction": "inbound",
-                    "order": 2,
+                    "order": 302,
                     "label": "order messages",
                     "begin": "y+",
                     "end": "y+",
