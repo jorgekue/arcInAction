@@ -76,7 +76,7 @@ const defaultModelFiles = [
 const modelFiles = [...defaultModelFiles];
 
 /** @type {string} Currently loaded model file name */
-let currentModelFile = 'model/meldelisteEinreichen-model.json';
+let currentModelFile = 'model.json';
 
 
 /**
