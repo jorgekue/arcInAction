@@ -64,7 +64,7 @@ Skript der Animation:
 Der **aia‑Viewer** bietet eine interaktiv steuerbare 3D‑Ansicht. Über die Maus lässt sich das Modell:
 
 - **drehen** (Orbit‑Bewegung),
-- **verschieben** (Pan),
+- **verschieben**,
 - **zoomen** (Zoom in/out).
 
 Eine kurze Übersicht zu den Maus‑Interaktionen wird in der linken oberen Ecke des Viewers angezeigt und erleichtert insbesondere neuen Nutzern den Einstieg.
@@ -205,7 +205,7 @@ Pro ConnectionGroup werden u.a. definiert:
 
 Der initiale Sichtbarkeitsmodus kann optional im Modell unter `settings` über `selectConnectionsAndComponents` konfiguriert werden (Default: `false`).
 
-![Connections Groups](/doc/img/connectionGroups.gif)
+![Connections Groups](/doc/img/connectionsGroups.gif)
 
 _Bild: Connections Groups._
 
@@ -272,13 +272,13 @@ _Bild: Animations‑Steuerung._
 
 Mit wachsender Architektur steigt der Aufwand, konsistente aia‑Modelle manuell in JSON zu pflegen. KI‑Werkzeuge können hier helfen, die **Komplexität der Modellierung** deutlich zu reduzieren, ohne auf fachliche Qualität zu verzichten.
 
-## GitHub‑Agenten als Modellierungsassistent
+## Agenten als Modellierungsassistent
 
-In VS Code können GitHub‑Agenten (z.B. im „Build with Agent Mode“) als spezialisierte **Modellierungsassistenten** eingerichtet werden. Die Idee:
+In VS Code können GitHub‑Copilot Agenten (z.B. im „Build with Agent Mode“) als spezialisierte **Modellierungsassistenten** eingerichtet werden. Die Idee:
 
 - Im Repository werden **Kontextdateien** gepflegt, z.B.:
   - ein Style‑Guide für die JSON‑Struktur (`layers`, `components`, `connectionGroups`, `typeStyles`),
-  - eine Mapping‑Beschreibung, wie PlantUML‑Elemente auf aia‑Komponenten abgebildet werden,
+  - eine Mapping‑Beschreibung, wie z.B. PlantUML‑Elemente auf aia‑Komponenten abgebildet werden,
   - eine Modellierungsbeschreibung bzw. dieser Artikel.
 - Ein Agent („aia‑Model‑Agent“) nutzt diese Dateien als **feste Regeln und Beispiele**, um:
   - aus textuellen Beschreibungen oder
@@ -289,10 +289,10 @@ Routineaufgaben wie das Anlegen von Layern, Standard‑Typen (`frontend`, `servi
 
 ## PlantUML als Ausgangs- und Zwischenformat
 
-Viele Teams nutzen bereits **PlantUML‑Sequenzdiagramme**, um Abläufe zwischen Akteuren, UI, Services und Datenbanken zu beschreiben. Diese Diagramme eignen sich als **Ausgangspunkt und Zwischenstufe** für `aia`‑Modelle:
+Viele Teams nutzen bereits **PlantUML‑Sequenzdiagramme**, um Abläufe z.B. zwischen Akteuren, UI, Services und Datenbanken zu beschreiben. Diese Diagramme eignen sich als **Ausgangspunkt und Zwischenstufe** für `aia`‑Modelle:
 
 1. Fachliche Abläufe werden in PlantUML formuliert oder verfeinert.
-2. Ein GitHub‑Agent transformiert das Sequenzdiagramm in ein aia‑JSON‑Modell, indem er:
+2. Ein GitHub‑copilot Agent transformiert das Sequenzdiagramm in ein aia‑JSON‑Modell, indem er:
    - Teilnehmer (actor, participant, database) passenden Layern und Typen zuordnet,
    - IDs und Labels gemäß der Modellierungskonventionen erzeugt,
    - die Nachrichten im Sequenzdiagramm in `connectionGroups` und `connections` überführt.
@@ -316,7 +316,7 @@ https://jorgekue.github.io/arcInAction/aiaViewer.html
 
 Über verschiedene **Kameraperspektiven**, das gezielte Zu‑ und Abschalten von **ConnectionGroups** und **Datenfluss‑Animationen** kann die dargestellte Komplexität fein dosiert und an unterschiedliche Stakeholder angepasst werden – von der Entwicklung bis zum Management.
 
-**KI‑gestützte Agenten** wirken dabei als **Modellierungsassistenz**: Sie automatisieren formale und syntaktische Schritte, sichern Konventionen und Konsistenz und senken die Einstiegshürde, `aia`‑Modelle zu erstellen oder zu pflegen. In Kombination mit **PlantUML** als textuellem Format, einem GitHub‑Agenten als Transformator und dem `aia`‑Viewer als Visualisierung entsteht ein durchgängiger Weg von der textuellen Interaktionsbeschreibung zum 4D‑Modell – bei deutlich reduziertem manuellen Aufwand und besser beherrschbarer Modellierungskomplexität.
+**KI‑gestützte Agenten** wirken dabei als **Modellierungsassistenz**: Sie automatisieren formale und syntaktische Schritte, sichern Konventionen und Konsistenz und senken die Einstiegshürde, `aia`‑Modelle zu erstellen oder zu pflegen. In Kombination mit **PlantUML** als textuellem Format, einem GitHub‑Copilot Agenten als Transformator und dem `aia`‑Viewer als Visualisierung entsteht ein durchgängiger Weg von der textuellen Interaktionsbeschreibung zum 4D‑Modell – bei deutlich reduziertem manuellen Aufwand und besser beherrschbarer Modellierungskomplexität.
 
 ---
 

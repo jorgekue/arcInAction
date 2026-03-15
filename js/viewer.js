@@ -58,9 +58,23 @@ const modelFlowTimingSettings = {
 
 /** @type {{animateComponents: boolean, selectConnectionsAndComponents: boolean, showComponentPosition: boolean}} Global visual settings from model.settings */
 const modelVisualSettings = {
-    animateComponents: true,
+    animateComponents: false,
     selectConnectionsAndComponents: false,
-    showComponentPosition: true
+    showComponentPosition: false
+};
+
+/** @type {{showDeveloperControls: boolean, undoRedoDepth: number}} Developer settings from model.settings */
+const modelDeveloperSettings = {
+    showDeveloperControls: false,
+    undoRedoDepth: 50
+};
+
+/** @type {{maxDepth: number, undoStack: Array<{before: string, after: string}>, redoStack: Array<{before: string, after: string}>, isApplying: boolean}} Undo/Redo edit history */
+const developerEditHistory = {
+    maxDepth: 50,
+    undoStack: [],
+    redoStack: [],
+    isApplying: false
 };
 
 /**
@@ -76,7 +90,7 @@ const defaultModelFiles = [
 const modelFiles = [...defaultModelFiles];
 
 /** @type {string} Currently loaded model file name */
-let currentModelFile = 'model.json';
+let currentModelFile = 'model/bKVMeilenstein1-model.json';
 
 
 /**
@@ -381,6 +395,1122 @@ let currentFromComponentMarker = null;
 /** @type {THREE.Mesh|null} Ring marker for current target component */
 let currentToComponentMarker = null;
 
+/** @type {{enabled: boolean, selectedLine: THREE.Line|null, selectedColor: number, pointColor: number, activePointColor: number, hoverPointColor: number, selectedPointIndex: number, pointHandles: Array<THREE.Mesh>, hoverInsertMarker: THREE.Mesh|null, isDraggingPoint: boolean, dragPointerId: number|null, dragPlane: THREE.Plane|null, dragStartIntersection: THREE.Vector3|null, dragStartPoint: THREE.Vector3|null, dragBeforeSnapshot: string|null, dragBeforeSelection: {identity: string, pointIndex: number}|null}} Developer mode runtime state */
+const developerModeState = {
+    enabled: false,
+    selectedLine: null,
+    selectedColor: 0x00e5ff,
+    pointColor: 0xffffff,
+    activePointColor: 0xff4d4f,
+    hoverPointColor: 0x00ff99,
+    selectedPointIndex: -1,
+    pointHandles: [],
+    hoverInsertMarker: null,
+    isDraggingPoint: false,
+    dragPointerId: null,
+    dragPlane: null,
+    dragStartIntersection: null,
+    dragStartPoint: null,
+    dragBeforeSnapshot: null,
+    dragBeforeSelection: null
+};
+
+/** @type {THREE.Raycaster} Raycaster used in developer mode for line picking */
+const developerRaycaster = new THREE.Raycaster();
+developerRaycaster.params.Line = { threshold: 0.4 };
+
+/** @type {THREE.Vector2} Normalized device coordinates of pointer */
+const developerPointerNdc = new THREE.Vector2();
+
+/**
+ * Rounds a numeric coordinate for stable JSON output.
+ * @param {number} value
+ * @returns {number}
+ */
+function roundCoordinate(value) {
+    return Math.round(value * 1000) / 1000;
+}
+
+/**
+ * Snaps a numeric value to fixed increments.
+ * @param {number} value
+ * @param {number} step
+ * @returns {number}
+ */
+function snapToStep(value, step) {
+    return Math.round(value / step) * step;
+}
+
+/**
+ * Takes a full JSON snapshot of current model state.
+ * @returns {string|null}
+ */
+function createModelSnapshot() {
+    if (!modelData) {
+        return null;
+    }
+
+    try {
+        return JSON.stringify(modelData);
+    } catch (err) {
+        console.warn('Could not create model snapshot for history.', err);
+        return null;
+    }
+}
+
+/**
+ * Resets undo/redo history for current editing session.
+ */
+function resetDeveloperHistory() {
+    developerEditHistory.undoStack = [];
+    developerEditHistory.redoStack = [];
+    updateDeveloperModeUI();
+}
+
+/**
+ * Records an edit operation in undo history.
+ * @param {string|null} beforeSnapshot
+ * @param {string|null} afterSnapshot
+ * @param {{identity: string, pointIndex: number}|null} [beforeSelection]
+ * @param {{identity: string, pointIndex: number}|null} [afterSelection]
+ */
+function recordDeveloperHistory(beforeSnapshot, afterSnapshot, beforeSelection = null, afterSelection = null) {
+    if (developerEditHistory.isApplying) {
+        return;
+    }
+
+    if (!beforeSnapshot || !afterSnapshot || beforeSnapshot === afterSnapshot) {
+        return;
+    }
+
+    developerEditHistory.undoStack.push({
+        before: beforeSnapshot,
+        after: afterSnapshot,
+        beforeSelection,
+        afterSelection
+    });
+
+    if (developerEditHistory.undoStack.length > developerEditHistory.maxDepth) {
+        developerEditHistory.undoStack.splice(0, developerEditHistory.undoStack.length - developerEditHistory.maxDepth);
+    }
+
+    developerEditHistory.redoStack = [];
+    updateDeveloperModeUI();
+}
+
+/**
+ * Captures current active state of connection groups.
+ * @returns {{byOrderName: Map<string, boolean>, byName: Map<string, boolean>}}
+ */
+function captureConnectionGroupSelectionState() {
+    const byOrderName = new Map();
+    const byName = new Map();
+
+    connectionGroups.forEach((group, index) => {
+        const orderValue = group.order != null ? group.order : index;
+        const nameValue = group.name || `Group ${index + 1}`;
+        const activeValue = group.active !== false;
+
+        byOrderName.set(`${orderValue}|${nameValue}`, activeValue);
+        if (!byName.has(nameValue)) {
+            byName.set(nameValue, activeValue);
+        }
+    });
+
+    return { byOrderName, byName };
+}
+
+/**
+ * Restores active state of connection groups from a snapshot.
+ * @param {{byOrderName: Map<string, boolean>, byName: Map<string, boolean>}|null} snapshot
+ */
+function restoreConnectionGroupSelectionState(snapshot) {
+    if (!snapshot || !Array.isArray(connectionGroups) || connectionGroups.length === 0) {
+        return;
+    }
+
+    connectionGroups.forEach((group, index) => {
+        const orderValue = group.order != null ? group.order : index;
+        const nameValue = group.name || `Group ${index + 1}`;
+        const key = `${orderValue}|${nameValue}`;
+
+        if (snapshot.byOrderName.has(key)) {
+            group.active = snapshot.byOrderName.get(key);
+            return;
+        }
+
+        if (snapshot.byName.has(nameValue)) {
+            group.active = snapshot.byName.get(nameValue);
+        }
+    });
+
+    updateConnectionVisibilityFromGroups();
+    buildConnectionGroupsUI();
+}
+
+/**
+ * Builds a stable identity key for a connection.
+ * @param {string} groupName
+ * @param {Object} conn
+ * @returns {string}
+ */
+function buildDeveloperConnectionIdentity(groupName, conn) {
+    const safeGroup = groupName || '';
+    const safeConn = conn || {};
+    const order = safeConn.order != null ? safeConn.order : '';
+
+    return [
+        safeGroup,
+        order,
+        safeConn.from || '',
+        safeConn.to || '',
+        safeConn.label || '',
+        safeConn.begin || '',
+        safeConn.end || ''
+    ].join('|');
+}
+
+/**
+ * Captures currently selected developer connection and point index.
+ * @returns {{identity: string, pointIndex: number}|null}
+ */
+function captureDeveloperSelectionState() {
+    const selectedLine = developerModeState.selectedLine;
+    const conn = selectedLine?.userData?.connection;
+    if (!selectedLine || !conn) {
+        return null;
+    }
+
+    return {
+        identity: buildDeveloperConnectionIdentity(selectedLine.userData?.groupName || 'Group', conn),
+        pointIndex: developerModeState.selectedPointIndex
+    };
+}
+
+/**
+ * Finds a connection line by identity key in the current scene.
+ * @param {string} identity
+ * @returns {THREE.Line|null}
+ */
+function findDeveloperConnectionLineByIdentity(identity) {
+    if (!identity) {
+        return null;
+    }
+
+    let result = null;
+    scene.traverse(obj => {
+        if (result || !obj?.userData) {
+            return;
+        }
+
+        if (obj.userData.type !== 'connection') {
+            return;
+        }
+
+        const conn = obj.userData.connection;
+        const groupName = obj.userData.groupName || 'Group';
+        const currentIdentity = buildDeveloperConnectionIdentity(groupName, conn);
+        if (currentIdentity === identity) {
+            result = obj;
+        }
+    });
+
+    return result;
+}
+
+/**
+ * Restores previously captured developer selection state.
+ * @param {{identity: string, pointIndex: number}|null} snapshot
+ */
+function restoreDeveloperSelectionState(snapshot) {
+    if (!snapshot || !developerModeState.enabled) {
+        return;
+    }
+
+    const selectedLine = findDeveloperConnectionLineByIdentity(snapshot.identity);
+    if (!selectedLine) {
+        return;
+    }
+
+    setDeveloperSelection(selectedLine);
+    setDeveloperActivePoint(snapshot.pointIndex);
+}
+
+/**
+ * Applies a full model snapshot and rebuilds scene.
+ * @param {string} snapshot
+ * @param {{identity: string, pointIndex: number}|null} [selectionSnapshot]
+ */
+function applyDeveloperSnapshot(snapshot, selectionSnapshot = null) {
+    const groupSelectionSnapshot = captureConnectionGroupSelectionState();
+    const fallbackSelectionSnapshot = captureDeveloperSelectionState();
+
+    let parsedModel;
+    try {
+        parsedModel = JSON.parse(snapshot);
+    } catch (err) {
+        console.warn('Could not parse history snapshot.', err);
+        return;
+    }
+
+    developerEditHistory.isApplying = true;
+    try {
+        loadModelFromObject(parsedModel);
+        restoreConnectionGroupSelectionState(groupSelectionSnapshot);
+        restoreDeveloperSelectionState(selectionSnapshot || fallbackSelectionSnapshot);
+    } finally {
+        developerEditHistory.isApplying = false;
+    }
+}
+
+/**
+ * Undo last dev edit operation.
+ */
+function undoDeveloperEdit() {
+    const entry = developerEditHistory.undoStack.pop();
+    if (!entry) {
+        updateDeveloperModeUI();
+        return;
+    }
+
+    developerEditHistory.redoStack.push(entry);
+    const selectionForUndo = entry.beforeSelection || entry.afterSelection || null;
+    applyDeveloperSnapshot(entry.before, selectionForUndo);
+    updateDeveloperModeUI();
+}
+
+/**
+ * Redo last reverted dev edit operation.
+ */
+function redoDeveloperEdit() {
+    const entry = developerEditHistory.redoStack.pop();
+    if (!entry) {
+        updateDeveloperModeUI();
+        return;
+    }
+
+    developerEditHistory.undoStack.push(entry);
+    const selectionForRedo = entry.afterSelection || entry.beforeSelection || null;
+    applyDeveloperSnapshot(entry.after, selectionForRedo);
+    updateDeveloperModeUI();
+}
+
+/**
+ * Clears insert-hover marker.
+ */
+function clearDeveloperInsertMarker() {
+    const marker = developerModeState.hoverInsertMarker;
+    if (!marker) {
+        return;
+    }
+
+    scene.remove(marker);
+    marker.geometry?.dispose?.();
+    marker.material?.dispose?.();
+    developerModeState.hoverInsertMarker = null;
+}
+
+/**
+ * Shows or moves insert-hover marker.
+ * @param {THREE.Vector3} worldPosition
+ */
+function showDeveloperInsertMarker(worldPosition) {
+    if (!worldPosition) {
+        clearDeveloperInsertMarker();
+        return;
+    }
+
+    if (!developerModeState.hoverInsertMarker) {
+        const geometry = new THREE.SphereGeometry(0.12, 12, 12);
+        const material = new THREE.MeshBasicMaterial({
+            color: developerModeState.hoverPointColor,
+            transparent: true,
+            opacity: 0.9,
+            depthTest: true,
+            depthWrite: false
+        });
+        developerModeState.hoverInsertMarker = new THREE.Mesh(geometry, material);
+        scene.add(developerModeState.hoverInsertMarker);
+    }
+
+    developerModeState.hoverInsertMarker.position.copy(worldPosition);
+}
+
+/**
+ * Clears and disposes all developer point handles.
+ */
+function clearDeveloperPointHandles() {
+    developerModeState.pointHandles.forEach(handle => {
+        scene.remove(handle);
+        handle.geometry?.dispose?.();
+        handle.material?.dispose?.();
+    });
+    developerModeState.pointHandles = [];
+}
+
+/**
+ * Updates active/inactive style of all current point handles.
+ */
+function updateDeveloperPointHandleStyles() {
+    developerModeState.pointHandles.forEach(handle => {
+        const pointIndex = handle?.userData?.pointIndex;
+        const isActive = pointIndex === developerModeState.selectedPointIndex;
+        if (handle?.material?.color) {
+            handle.material.color.setHex(isActive ? developerModeState.activePointColor : developerModeState.pointColor);
+        }
+        if (handle?.material) {
+            handle.material.opacity = isActive ? 1 : 0.85;
+            handle.material.needsUpdate = true;
+        }
+        const scale = isActive ? 1.25 : 1;
+        handle.scale.set(scale, scale, scale);
+    });
+}
+
+/**
+ * Creates visible drag handles for selected connection points.
+ */
+function rebuildDeveloperPointHandles() {
+    clearDeveloperPointHandles();
+
+    const selectedLine = developerModeState.selectedLine;
+    const conn = selectedLine?.userData?.connection;
+    if (!conn || !Array.isArray(conn.points) || conn.points.length === 0) {
+        developerModeState.selectedPointIndex = -1;
+        return;
+    }
+
+    const pointGeometry = new THREE.SphereGeometry(0.16, 16, 16);
+
+    conn.points.forEach((point, index) => {
+        if (
+            typeof point?.x !== 'number' ||
+            typeof point?.y !== 'number' ||
+            typeof point?.z !== 'number'
+        ) {
+            return;
+        }
+
+        const material = new THREE.MeshBasicMaterial({
+            color: developerModeState.pointColor,
+            transparent: true,
+            opacity: 0.85,
+            depthTest: true,
+            depthWrite: false
+        });
+
+        const handle = new THREE.Mesh(pointGeometry.clone(), material);
+        handle.position.set(point.x, point.y, point.z);
+        handle.userData = {
+            type: 'devPointHandle',
+            pointIndex: index,
+            line: selectedLine
+        };
+
+        scene.add(handle);
+        developerModeState.pointHandles.push(handle);
+    });
+
+    if (developerModeState.selectedPointIndex >= conn.points.length) {
+        developerModeState.selectedPointIndex = conn.points.length - 1;
+    }
+
+    updateDeveloperPointHandleStyles();
+}
+
+/**
+ * Sets currently active point index for selected connection.
+ * @param {number} pointIndex
+ */
+function setDeveloperActivePoint(pointIndex) {
+    const conn = developerModeState.selectedLine?.userData?.connection;
+    if (!conn || !Array.isArray(conn.points)) {
+        developerModeState.selectedPointIndex = -1;
+        updateDeveloperPointHandleStyles();
+        updateDeveloperModeUI();
+        return;
+    }
+
+    const maxIndex = conn.points.length - 1;
+    if (maxIndex < 0) {
+        developerModeState.selectedPointIndex = -1;
+    } else {
+        developerModeState.selectedPointIndex = Math.max(0, Math.min(pointIndex, maxIndex));
+    }
+
+    updateDeveloperPointHandleStyles();
+    updateDeveloperModeUI();
+}
+
+/**
+ * Starts point dragging for the currently selected point handle.
+ * @param {PointerEvent} event
+ * @param {THREE.Mesh} handle
+ */
+function startDeveloperPointDrag(event, handle) {
+    const pointIndex = handle?.userData?.pointIndex;
+    if (!Number.isInteger(pointIndex) || pointIndex < 0) {
+        return;
+    }
+
+    setDeveloperActivePoint(pointIndex);
+    clearDeveloperInsertMarker();
+
+    developerModeState.dragBeforeSnapshot = createModelSnapshot();
+    developerModeState.dragBeforeSelection = captureDeveloperSelectionState();
+
+    developerModeState.isDraggingPoint = true;
+    developerModeState.dragPointerId = event.pointerId;
+
+    setDeveloperPointerFromEvent(event);
+    developerRaycaster.setFromCamera(developerPointerNdc, camera);
+
+    const dragNormal = new THREE.Vector3();
+    camera.getWorldDirection(dragNormal);
+
+    const dragStartPoint = handle.position.clone();
+    const dragPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(dragNormal, dragStartPoint);
+    const dragStartIntersection = new THREE.Vector3();
+    const hasIntersection = developerRaycaster.ray.intersectPlane(dragPlane, dragStartIntersection);
+    if (!hasIntersection) {
+        developerModeState.isDraggingPoint = false;
+        developerModeState.dragPointerId = null;
+        return;
+    }
+
+    developerModeState.dragPlane = dragPlane;
+    developerModeState.dragStartIntersection = dragStartIntersection.clone();
+    developerModeState.dragStartPoint = dragStartPoint;
+
+    controls.enabled = false;
+    renderer.domElement.setPointerCapture(event.pointerId);
+}
+
+/**
+ * Stops active point dragging.
+ * @param {PointerEvent} [event]
+ */
+function stopDeveloperPointDrag(event) {
+    if (!developerModeState.isDraggingPoint) {
+        return;
+    }
+
+    const pointerId = developerModeState.dragPointerId;
+    developerModeState.isDraggingPoint = false;
+    developerModeState.dragPointerId = null;
+    developerModeState.dragPlane = null;
+    developerModeState.dragStartIntersection = null;
+    developerModeState.dragStartPoint = null;
+
+    const beforeSnapshot = developerModeState.dragBeforeSnapshot;
+    const beforeSelection = developerModeState.dragBeforeSelection;
+    developerModeState.dragBeforeSnapshot = null;
+    developerModeState.dragBeforeSelection = null;
+    if (beforeSnapshot) {
+        const afterSnapshot = createModelSnapshot();
+        const afterSelection = captureDeveloperSelectionState();
+        recordDeveloperHistory(beforeSnapshot, afterSnapshot, beforeSelection, afterSelection);
+    }
+
+    controls.enabled = true;
+
+    if (pointerId != null && renderer.domElement.hasPointerCapture(pointerId)) {
+        renderer.domElement.releasePointerCapture(pointerId);
+    }
+
+    if (event) {
+        event.preventDefault();
+    }
+}
+
+/**
+ * Updates developer mode status text and control enabled state.
+ */
+function updateDeveloperModeUI() {
+    const exportBtn = document.getElementById('btn-dev-export');
+
+    if (exportBtn) {
+        exportBtn.disabled = !developerModeState.enabled || !modelData;
+    }
+}
+
+/**
+ * Applies or restores highlight style for a connection line.
+ * @param {THREE.Line} line
+ * @param {boolean} selected
+ */
+function setDeveloperLineStyle(line, selected) {
+    if (!line?.material?.color) {
+        return;
+    }
+
+    if (selected) {
+        line.material.color.setHex(developerModeState.selectedColor);
+    } else {
+        const originalColor = line.userData?.originalColor || defaultConnectionColor;
+        line.material.color.setHex(originalColor);
+    }
+}
+
+/**
+ * Clears current developer selection.
+ */
+function clearDeveloperSelection() {
+    stopDeveloperPointDrag();
+    clearDeveloperInsertMarker();
+    if (developerModeState.selectedLine) {
+        setDeveloperLineStyle(developerModeState.selectedLine, false);
+    }
+    developerModeState.selectedLine = null;
+    developerModeState.selectedPointIndex = -1;
+    clearDeveloperPointHandles();
+    updateDeveloperModeUI();
+}
+
+/**
+ * Sets selected connection line for developer editing.
+ * @param {THREE.Line|null} line
+ */
+function setDeveloperSelection(line) {
+    if (!developerModeState.enabled) {
+        return;
+    }
+
+    if (developerModeState.selectedLine === line) {
+        updateDeveloperModeUI();
+        return;
+    }
+
+    if (developerModeState.selectedLine) {
+        setDeveloperLineStyle(developerModeState.selectedLine, false);
+    }
+
+    developerModeState.selectedLine = line || null;
+    developerModeState.selectedPointIndex = -1;
+
+    if (developerModeState.selectedLine) {
+        setDeveloperLineStyle(developerModeState.selectedLine, true);
+    }
+
+    rebuildDeveloperPointHandles();
+
+    updateDeveloperModeUI();
+}
+
+/**
+ * Enables or disables developer mode.
+ * @param {boolean} enabled
+ */
+function setDeveloperModeEnabled(enabled) {
+    developerModeState.enabled = !!enabled;
+
+    const chkDevMode = document.getElementById('chk-dev-mode');
+    if (chkDevMode) {
+        chkDevMode.checked = developerModeState.enabled;
+    }
+
+    if (!developerModeState.enabled) {
+        clearDeveloperSelection();
+    } else {
+        rebuildDeveloperPointHandles();
+    }
+
+    updateDeveloperModeUI();
+}
+
+/**
+ * Collects currently visible connection lines from scene.
+ * @returns {Array<THREE.Line>}
+ */
+function getVisibleConnectionLines() {
+    const lines = [];
+    scene.traverse(obj => {
+        if (!obj?.userData) return;
+        if (obj.userData.type !== 'connection') return;
+        if (!obj.visible) return;
+        lines.push(obj);
+    });
+    return lines;
+}
+
+/**
+ * Computes normalized pointer coordinates for raycasting.
+ * @param {PointerEvent} event
+ */
+function setDeveloperPointerFromEvent(event) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    developerPointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    developerPointerNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+}
+
+/**
+ * Computes the closest point on a segment for a world-space point.
+ * @param {THREE.Vector3} segmentStart
+ * @param {THREE.Vector3} segmentEnd
+ * @param {THREE.Vector3} point
+ * @returns {{point: THREE.Vector3, distanceSq: number}}
+ */
+function getClosestPointOnSegment(segmentStart, segmentEnd, point) {
+    const segmentVector = segmentEnd.clone().sub(segmentStart);
+    const segmentLengthSq = segmentVector.lengthSq();
+    if (segmentLengthSq <= 0) {
+        return {
+            point: segmentStart.clone(),
+            distanceSq: segmentStart.distanceToSquared(point)
+        };
+    }
+
+    const toPoint = point.clone().sub(segmentStart);
+    const projection = toPoint.dot(segmentVector) / segmentLengthSq;
+    const t = Math.max(0, Math.min(1, projection));
+    const closest = segmentStart.clone().add(segmentVector.multiplyScalar(t));
+
+    return {
+        point: closest,
+        distanceSq: closest.distanceToSquared(point)
+    };
+}
+
+/**
+ * Finds insertion point/index on the currently selected line based on pointer hit.
+ * @param {THREE.Line} line
+ * @returns {{point: THREE.Vector3, insertIndex: number}|null}
+ */
+function getInsertPointOnSelectedLine(line) {
+    if (!line) {
+        return null;
+    }
+
+    const intersections = developerRaycaster.intersectObject(line, false);
+    if (!Array.isArray(intersections) || intersections.length === 0) {
+        return null;
+    }
+
+    const hitPoint = intersections[0].point;
+    const pathPoints = line.userData?.pathPoints;
+    const conn = line.userData?.connection;
+    if (!Array.isArray(pathPoints) || pathPoints.length < 2 || !conn) {
+        return null;
+    }
+
+    const existingPointCount = Array.isArray(conn.points) ? conn.points.length : 0;
+    let bestSegmentIndex = 0;
+    let bestPoint = pathPoints[0].clone();
+    let bestDistanceSq = Number.POSITIVE_INFINITY;
+
+    for (let segmentIndex = 0; segmentIndex < pathPoints.length - 1; segmentIndex++) {
+        const segmentStart = pathPoints[segmentIndex];
+        const segmentEnd = pathPoints[segmentIndex + 1];
+        const candidate = getClosestPointOnSegment(segmentStart, segmentEnd, hitPoint);
+
+        if (candidate.distanceSq < bestDistanceSq) {
+            bestDistanceSq = candidate.distanceSq;
+            bestSegmentIndex = segmentIndex;
+            bestPoint = candidate.point;
+        }
+    }
+
+    const insertIndex = Math.max(0, Math.min(bestSegmentIndex, existingPointCount));
+    return { point: bestPoint, insertIndex };
+}
+
+/**
+ * Finds the arrow object for a specific connection line.
+ * @param {THREE.Line} line
+ * @returns {THREE.ArrowHelper|null}
+ */
+function findConnectionArrowForLine(line) {
+    const conn = line?.userData?.connection;
+    const groupName = line?.userData?.groupName;
+    if (!conn) {
+        return null;
+    }
+
+    let result = null;
+    scene.traverse(obj => {
+        if (result || !obj?.userData) return;
+        if (obj.userData.type !== 'connectionArrow') return;
+        if (obj.userData.connection !== conn) return;
+        if ((obj.userData.groupName || 'Group') !== (groupName || 'Group')) return;
+        result = obj;
+    });
+
+    return result;
+}
+
+/**
+ * Rebuilds line and arrow geometry for a changed connection.
+ * @param {THREE.Line} line
+ */
+function refreshDeveloperConnectionGeometry(line) {
+    if (!line?.userData?.connection) {
+        return;
+    }
+
+    const conn = line.userData.connection;
+    const fromEntry = componentMeshes.get(conn.from);
+    const toEntry = componentMeshes.get(conn.to);
+    if (!fromEntry || !toEntry) {
+        return;
+    }
+
+    const { pathPoints, startSurface, endSurface } = buildConnectionPath(conn, fromEntry.mesh, toEntry.mesh);
+    if (!Array.isArray(pathPoints) || pathPoints.length < 2) {
+        return;
+    }
+
+    if (line.geometry) {
+        line.geometry.dispose();
+    }
+    line.geometry = new THREE.BufferGeometry().setFromPoints(pathPoints);
+    line.userData.pathPoints = pathPoints;
+    line.userData.startSurface = startSurface;
+    line.userData.endSurface = endSurface;
+
+    const arrow = findConnectionArrowForLine(line);
+    if (!arrow) {
+        return;
+    }
+
+    const lastIndex = pathPoints.length - 1;
+    const endPoint = pathPoints[lastIndex];
+    const prevPoint = pathPoints[lastIndex - 1];
+
+    const direction = endPoint.clone().sub(prevPoint).normalize();
+    const segmentLength = prevPoint.distanceTo(endPoint);
+    const tipGap = 0.02;
+    const maxArrowLength = Math.max(segmentLength - tipGap, 0.05);
+    const arrowLength = Math.min(maxArrowLength, 1.5);
+    const arrowOrigin = endPoint.clone().sub(direction.clone().multiplyScalar(arrowLength));
+
+    arrow.position.copy(arrowOrigin);
+    arrow.setDirection(direction);
+    arrow.setLength(arrowLength, 0.6, 0.3);
+    arrow.userData.pathPoints = pathPoints;
+    arrow.userData.startSurface = startSurface;
+    arrow.userData.endSurface = endSurface;
+
+    if (line === developerModeState.selectedLine) {
+        rebuildDeveloperPointHandles();
+    }
+}
+
+/**
+ * Appends a point to selected connection directly on its current rendered line.
+ * @param {PointerEvent} event
+ */
+function appendDeveloperPointFromPointer(event) {
+    const selectedLine = developerModeState.selectedLine;
+    if (!selectedLine) {
+        return;
+    }
+
+    const beforeSnapshot = createModelSnapshot();
+    const beforeSelection = captureDeveloperSelectionState();
+
+    const insertData = getInsertPointOnSelectedLine(selectedLine);
+    if (!insertData) {
+        return;
+    }
+
+    const conn = selectedLine.userData.connection;
+    if (!Array.isArray(conn.points)) {
+        conn.points = [];
+    }
+
+    conn.points.splice(insertData.insertIndex, 0, {
+        x: roundCoordinate(insertData.point.x),
+        y: roundCoordinate(insertData.point.y),
+        z: roundCoordinate(insertData.point.z)
+    });
+
+    refreshDeveloperConnectionGeometry(selectedLine);
+    setDeveloperActivePoint(insertData.insertIndex);
+    const afterSnapshot = createModelSnapshot();
+    const afterSelection = captureDeveloperSelectionState();
+    recordDeveloperHistory(beforeSnapshot, afterSnapshot, beforeSelection, afterSelection);
+    updateDeveloperModeUI();
+}
+
+/**
+ * Moves active selected point based on pointer ray projection.
+ * Coordinates are snapped to 0.5 increments.
+ * @returns {boolean} True when point position changed
+ */
+function moveDeveloperActivePointFromPointer() {
+    const selectedLine = developerModeState.selectedLine;
+    const conn = selectedLine?.userData?.connection;
+    const pointIndex = developerModeState.selectedPointIndex;
+    if (!selectedLine || !conn || !Array.isArray(conn.points) || pointIndex < 0 || pointIndex >= conn.points.length) {
+        return false;
+    }
+
+    const dragPlane = developerModeState.dragPlane;
+    const dragStartIntersection = developerModeState.dragStartIntersection;
+    const dragStartPoint = developerModeState.dragStartPoint;
+    if (!dragPlane || !dragStartIntersection || !dragStartPoint) {
+        return false;
+    }
+
+    const worldPoint = new THREE.Vector3();
+    const hasIntersection = developerRaycaster.ray.intersectPlane(dragPlane, worldPoint);
+    if (!hasIntersection) {
+        return false;
+    }
+
+    const delta = worldPoint.sub(dragStartIntersection);
+    const targetPoint = dragStartPoint.clone().add(delta);
+
+    const snappedX = roundCoordinate(snapToStep(targetPoint.x, 0.5));
+    const snappedY = roundCoordinate(snapToStep(targetPoint.y, 0.5));
+    const snappedZ = roundCoordinate(snapToStep(targetPoint.z, 0.5));
+
+    const currentPoint = conn.points[pointIndex];
+    if (currentPoint.x === snappedX && currentPoint.y === snappedY && currentPoint.z === snappedZ) {
+        return false;
+    }
+
+    currentPoint.x = snappedX;
+    currentPoint.y = snappedY;
+    currentPoint.z = snappedZ;
+
+    refreshDeveloperConnectionGeometry(selectedLine);
+    return true;
+}
+
+/**
+ * Deletes currently active point from selected connection.
+ */
+function deleteDeveloperActivePoint() {
+    const selectedLine = developerModeState.selectedLine;
+    const conn = selectedLine?.userData?.connection;
+    const pointIndex = developerModeState.selectedPointIndex;
+
+    if (!selectedLine || !conn || !Array.isArray(conn.points) || pointIndex < 0 || pointIndex >= conn.points.length) {
+        return;
+    }
+
+    const beforeSnapshot = createModelSnapshot();
+    const beforeSelection = captureDeveloperSelectionState();
+
+    conn.points.splice(pointIndex, 1);
+
+    refreshDeveloperConnectionGeometry(selectedLine);
+
+    const nextIndex = conn.points.length > 0 ? Math.min(pointIndex, conn.points.length - 1) : -1;
+    setDeveloperActivePoint(nextIndex);
+
+    const afterSnapshot = createModelSnapshot();
+    const afterSelection = captureDeveloperSelectionState();
+    recordDeveloperHistory(beforeSnapshot, afterSnapshot, beforeSelection, afterSelection);
+    updateDeveloperModeUI();
+}
+
+/**
+ * Exports current model (including edited points) as a JSON download.
+ */
+function exportDeveloperModelJson() {
+    if (!modelData) {
+        return;
+    }
+
+    const json = JSON.stringify(modelData, null, 4);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const anchor = document.createElement('a');
+    const sourceFile = currentModelFile ? currentModelFile.split('/').pop() : 'model.json';
+    const fileName = (sourceFile || 'model.json').replace(/\.json$/i, '-devmode.json');
+
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * Handles pointer interaction in developer mode.
+ * Click = select line, Shift+Click = add point on the selected line.
+ * @param {PointerEvent} event
+ */
+function onDeveloperPointerDown(event) {
+    if (!developerModeState.enabled) {
+        return;
+    }
+
+    if (event.button !== 0) {
+        return;
+    }
+
+    setDeveloperPointerFromEvent(event);
+    developerRaycaster.setFromCamera(developerPointerNdc, camera);
+
+    const handleIntersections = developerRaycaster.intersectObjects(developerModeState.pointHandles, false);
+    if (handleIntersections.length > 0) {
+        startDeveloperPointDrag(event, handleIntersections[0].object);
+        event.preventDefault();
+        return;
+    }
+
+    if (event.shiftKey) {
+        appendDeveloperPointFromPointer(event);
+        const hoverAfterInsert = getInsertPointOnSelectedLine(developerModeState.selectedLine);
+        if (hoverAfterInsert) {
+            showDeveloperInsertMarker(hoverAfterInsert.point);
+        } else {
+            clearDeveloperInsertMarker();
+        }
+        event.preventDefault();
+        return;
+    }
+
+    const lines = getVisibleConnectionLines();
+    if (!lines.length) {
+        clearDeveloperSelection();
+        return;
+    }
+
+    const intersections = developerRaycaster.intersectObjects(lines, false);
+    if (intersections.length > 0) {
+        setDeveloperSelection(intersections[0].object);
+    } else {
+        clearDeveloperSelection();
+    }
+
+    clearDeveloperInsertMarker();
+}
+
+/**
+ * Updates hover marker for potential insert location on selected line.
+ * Marker is shown only while Shift is pressed.
+ * @param {PointerEvent} event
+ */
+function updateDeveloperInsertHover(event) {
+    if (!developerModeState.enabled || developerModeState.isDraggingPoint) {
+        clearDeveloperInsertMarker();
+        return;
+    }
+
+    if (!event.shiftKey || !developerModeState.selectedLine) {
+        clearDeveloperInsertMarker();
+        return;
+    }
+
+    const insertData = getInsertPointOnSelectedLine(developerModeState.selectedLine);
+    if (!insertData) {
+        clearDeveloperInsertMarker();
+        return;
+    }
+
+    showDeveloperInsertMarker(insertData.point);
+}
+
+/**
+ * Handles point dragging while pointer moves.
+ * @param {PointerEvent} event
+ */
+function onDeveloperPointerMove(event) {
+    if (!developerModeState.enabled) {
+        clearDeveloperInsertMarker();
+        return;
+    }
+
+    setDeveloperPointerFromEvent(event);
+    developerRaycaster.setFromCamera(developerPointerNdc, camera);
+
+    if (!developerModeState.isDraggingPoint) {
+        updateDeveloperInsertHover(event);
+        return;
+    }
+
+    if (developerModeState.dragPointerId != null && event.pointerId !== developerModeState.dragPointerId) {
+        return;
+    }
+
+    const moved = moveDeveloperActivePointFromPointer();
+    if (moved) {
+        updateDeveloperModeUI();
+    }
+
+    event.preventDefault();
+}
+
+/**
+ * Finalizes point dragging on pointer release/cancel.
+ * @param {PointerEvent} event
+ */
+function onDeveloperPointerUp(event) {
+    if (!developerModeState.enabled || !developerModeState.isDraggingPoint) {
+        return;
+    }
+
+    if (developerModeState.dragPointerId != null && event.pointerId !== developerModeState.dragPointerId) {
+        return;
+    }
+
+    stopDeveloperPointDrag(event);
+    updateDeveloperModeUI();
+}
+
+/**
+ * Handles keyboard shortcuts for dev undo/redo.
+ * @param {KeyboardEvent} event
+ */
+function onDeveloperKeyDown(event) {
+    const target = event.target;
+    const targetTag = target && target.tagName ? String(target.tagName).toLowerCase() : '';
+    const isTypingTarget =
+        targetTag === 'input' ||
+        targetTag === 'textarea' ||
+        targetTag === 'select' ||
+        !!target?.isContentEditable;
+
+    if (isTypingTarget) {
+        return;
+    }
+
+    if (!developerModeState.enabled) {
+        return;
+    }
+
+    const key = String(event.key || '').toLowerCase();
+
+    if (key === 'escape') {
+        event.preventDefault();
+        clearDeveloperSelection();
+        return;
+    }
+
+    if (key === 'delete' || key === 'backspace') {
+        event.preventDefault();
+        deleteDeveloperActivePoint();
+        return;
+    }
+
+    const shortcutPressed = event.ctrlKey || event.metaKey;
+    if (!shortcutPressed) {
+        return;
+    }
+
+    if (key === 'z' && event.shiftKey) {
+        event.preventDefault();
+        redoDeveloperEdit();
+        return;
+    }
+
+    if (key === 'z') {
+        event.preventDefault();
+        undoDeveloperEdit();
+        return;
+    }
+
+    if (key === 'y') {
+        event.preventDefault();
+        redoDeveloperEdit();
+    }
+}
+
 // ============================================================================
 // Interface Details and Highlighting
 // ============================================================================
@@ -597,6 +1727,13 @@ function clearHighlight() {
  * Resets component data structures.
  */
 function clearScene() {
+    stopDeveloperPointDrag();
+    clearDeveloperPointHandles();
+    clearDeveloperInsertMarker();
+    developerModeState.selectedPointIndex = -1;
+    developerModeState.dragBeforeSnapshot = null;
+    developerModeState.dragBeforeSelection = null;
+
     const toRemove = [];
     scene.children.forEach(obj => {
         if (obj !== hemiLight && obj !== dirLight && obj !== gridHelper && obj !== LABEL.yAxisGroup && obj !== LABEL.gridLabelsGroup) {
@@ -1597,9 +2734,12 @@ function rebuildConnectionSequence() {
 function applyFlowTimingSettingsFromModel(model) {
     modelFlowTimingSettings.flowDurationMin = 3;
     modelFlowTimingSettings.flowSpeed = 2.5;
-    modelVisualSettings.animateComponents = true;
+    modelVisualSettings.animateComponents = false;
     modelVisualSettings.selectConnectionsAndComponents = false;
-    modelVisualSettings.showComponentPosition = true;
+    modelVisualSettings.showComponentPosition = false;
+    modelDeveloperSettings.showDeveloperControls = false;
+    modelDeveloperSettings.undoRedoDepth = 50;
+    developerEditHistory.maxDepth = 50;
 
     const settings = model && typeof model.settings === 'object' ? model.settings : null;
     if (!settings) {
@@ -1626,6 +2766,26 @@ function applyFlowTimingSettingsFromModel(model) {
 
     if (typeof settings.showComponentPosition === 'boolean') {
         modelVisualSettings.showComponentPosition = settings.showComponentPosition;
+    }
+
+    if (typeof settings.developerMode === 'boolean') {
+        modelDeveloperSettings.showDeveloperControls = settings.developerMode;
+    }
+
+    const parsedUndoDepth = Number(
+        settings.undoRedoDepth ?? settings.developerUndoDepth ?? settings.developerHistoryDepth
+    );
+
+    if (Number.isFinite(parsedUndoDepth) && parsedUndoDepth > 0) {
+        const sanitizedDepth = Math.max(1, Math.floor(parsedUndoDepth));
+        modelDeveloperSettings.undoRedoDepth = sanitizedDepth;
+        developerEditHistory.maxDepth = sanitizedDepth;
+        if (developerEditHistory.undoStack.length > sanitizedDepth) {
+            developerEditHistory.undoStack.splice(0, developerEditHistory.undoStack.length - sanitizedDepth);
+        }
+        if (developerEditHistory.redoStack.length > sanitizedDepth) {
+            developerEditHistory.redoStack.splice(0, developerEditHistory.redoStack.length - sanitizedDepth);
+        }
     }
 }
 
@@ -1742,7 +2902,15 @@ function startDataFlowOnConnection(connObject, options = {}) {
 function loadModelFromObject(model) {
     clearScene();
     modelData = model;
+    clearDeveloperSelection();
+    updateDeveloperModeUI();
+
+    if (!developerEditHistory.isApplying) {
+        resetDeveloperHistory();
+    }
+
     applyFlowTimingSettingsFromModel(model);
+    syncViewPanelStateFromSettings();
     addLayerLabels(model);
     createComponents(model);
     // Get connectionGroups from model
@@ -2035,8 +3203,12 @@ function updateFlowPositionControl() {
 function initViewPanel() {
     const chkGrid = document.getElementById('chk-view-grid');
     const chkComponentPosition = document.getElementById('chk-view-component-position');
+    const chkAnimateComponents = document.getElementById('chk-view-animate-components');
+    const devControls = document.getElementById('dev-controls');
+    const chkDevMode = document.getElementById('chk-dev-mode');
+    const btnDevExport = document.getElementById('btn-dev-export');
 
-    if (!chkGrid || !chkComponentPosition) {
+    if (!chkGrid || !chkComponentPosition || !chkAnimateComponents || !devControls || !chkDevMode || !btnDevExport) {
         console.warn('view panel controls not found');
         return;
     }
@@ -2046,6 +3218,15 @@ function initViewPanel() {
     gridHelper.visible = false;
     chkGrid.checked = false;
     chkComponentPosition.checked = !!modelVisualSettings.showComponentPosition;
+    chkAnimateComponents.checked = !!modelVisualSettings.animateComponents;
+    chkDevMode.checked = false;
+    setDeveloperModeEnabled(false);
+    devControls.style.display = modelDeveloperSettings.showDeveloperControls ? 'inline-flex' : 'none';
+
+    if (!modelDeveloperSettings.showDeveloperControls) {
+        chkDevMode.checked = false;
+        setDeveloperModeEnabled(false);
+    }
 
     chkGrid.addEventListener('change', () => {
         const visible = chkGrid.checked;
@@ -2065,6 +3246,55 @@ function initViewPanel() {
         modelVisualSettings.showComponentPosition = chkComponentPosition.checked;
         updateCurrentConnectionMarker();
     });
+
+    chkAnimateComponents.addEventListener('change', () => {
+        modelVisualSettings.animateComponents = chkAnimateComponents.checked;
+    });
+
+    chkDevMode.addEventListener('change', () => {
+        setDeveloperModeEnabled(chkDevMode.checked);
+    });
+
+    btnDevExport.addEventListener('click', () => {
+        exportDeveloperModelJson();
+    });
+
+    updateDeveloperModeUI();
+}
+
+/**
+ * Synchronizes view panel controls with current model/settings state.
+ */
+function syncViewPanelStateFromSettings() {
+    const chkComponentPosition = document.getElementById('chk-view-component-position');
+    const chkAnimateComponents = document.getElementById('chk-view-animate-components');
+    const devControls = document.getElementById('dev-controls');
+    const chkDevMode = document.getElementById('chk-dev-mode');
+
+    if (chkComponentPosition) {
+        chkComponentPosition.checked = !!modelVisualSettings.showComponentPosition;
+    }
+
+    if (chkAnimateComponents) {
+        chkAnimateComponents.checked = !!modelVisualSettings.animateComponents;
+    }
+
+    if (devControls) {
+        devControls.style.display = modelDeveloperSettings.showDeveloperControls ? 'inline-flex' : 'none';
+    }
+
+    if (chkDevMode) {
+        chkDevMode.checked = developerModeState.enabled;
+    }
+
+    if (!modelDeveloperSettings.showDeveloperControls) {
+        if (chkDevMode) {
+            chkDevMode.checked = false;
+        }
+        setDeveloperModeEnabled(false);
+    }
+
+    updateDeveloperModeUI();
 }
 
 /**
@@ -2193,7 +3423,11 @@ function setCameraView(viewId, animate = true) {
 // User Interaction: Mouse Click
 // ============================================================================
 
-// Intentionally no click-selection logic for the 3D canvas.
+renderer.domElement.addEventListener('pointerdown', onDeveloperPointerDown);
+renderer.domElement.addEventListener('pointermove', onDeveloperPointerMove);
+renderer.domElement.addEventListener('pointerup', onDeveloperPointerUp);
+renderer.domElement.addEventListener('pointercancel', onDeveloperPointerUp);
+window.addEventListener('keydown', onDeveloperKeyDown);
 
 // ============================================================================
 // Animation Loop

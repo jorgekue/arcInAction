@@ -338,6 +338,18 @@ body {
     cursor: pointer;
 }
 
+.view-panel-status {
+    font-size: 11px;
+    color: #ddd;
+    min-width: 130px;
+}
+
+.view-panel-dev-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 /* Overlay und Dialog wie gehabt */
 .aia-impressum-overlay {
   position: fixed;
