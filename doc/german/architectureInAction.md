@@ -64,7 +64,7 @@ Skript der Animation:
 Der **aia‑Viewer** bietet eine interaktiv steuerbare 3D‑Ansicht. Über die Maus lässt sich das Modell:
 
 - **drehen** (Orbit‑Bewegung),
-- **verschieben** (Pan),
+- **verschieben**,
 - **zoomen** (Zoom in/out).
 
 Eine kurze Übersicht zu den Maus‑Interaktionen wird in der linken oberen Ecke des Viewers angezeigt und erleichtert insbesondere neuen Nutzern den Einstieg.
@@ -94,7 +94,7 @@ Der Viewer folgt einem **deklarativen Modell‑Ansatz**:
 - Der **aia‑Viewer** liest ein **aia‑Modell** ein und stellt dieses im Browser interaktiv dar.
 - Das **aia‑Modell** wird in **JSON‑Notation** definiert.
 
-Anstatt die Architektur in einem Tool „zusammenzuklicken“, wird sie in einer strukturierten JSON‑Datei beschrieben. Diese dient als:
+Die Architektur wird bei diesem Ansatz grundsätzlich in einer strukturierten JSON‑Datei beschrieben. Diese dient als:
 
 - **Single Source of Truth** für die Darstellung,
 - potentieller **Export‑/Import‑Punkt** in andere Werkzeuge.
@@ -129,7 +129,7 @@ Aktuell werden folgende Typen unterstützt:
 - `actor` → als Spielfigur
 - `scheduler` → als Uhr
 
-Ein optionales Farbschema pro Typ wird über `typeStyles` definiert (z.B. Services in Grün, Datenbanken in Rot, Frontend in Blau).
+Ein optionales Farbschema kann pro Typ definiert werden, z.B. Services in Grün, Datenbanken in Rot, Frontend in Blau.
 
 ## Unterstützung durch das Grid
 
@@ -142,14 +142,22 @@ Zur Hilfestellung bei der Modellierung kann ein **Grid** eingeblendet werden (Ch
 
 _Bild: Grid für Modellierung._
 
-## Perspektive: Interaktiver Modellierungsmodus
+## Interaktiven Edit-Modus fuer Connections
 
-Derzeit werden aia‑Modelle rein **deklarativ** in JSON gepflegt. In einer möglichen Ausbaustufe ist ein **interaktiver Modellierungsmodus** denkbar:
+Neben dem deklarativen JSON‑Ansatz gibt es einen **interaktiven Edit‑Modus** im Viewer.
 
-- Komponenten und Verbindungen werden direkt im Viewer platziert.
-- Änderungen werden automatisch zurück in das JSON‑Modell geschrieben.
+Der Fokus liegt derzeit noch auf der interaktiven Bearbeitung von **Connections**:
 
-Dies würde insbesondere für nicht‑technische Anwender und Moderatoren in Workshops einen deutlich niedrigeren Einstieg ermöglichen.
+- Verbindungen auswählen,
+- Verlaufspunkte (Pathpoints) einfügen,
+- Punkte verschieben,
+- Punkte entfernen,
+- Redo/Undo
+- Ergebnis als JSON exportieren.
+
+Die detaillierte Beschreibung des Edit‑Modus mit seinen Fähigkeiten findet sich in einer eigenen Datei:
+
+> siehe **Interaktive Modellierung (Edit‑Modus)** in den Referenzen.
 
 ---
 
@@ -203,9 +211,11 @@ Pro ConnectionGroup werden u.a. definiert:
 - die Information, ob die Gruppe beim Laden des Modells initial **aktiv** sein soll (`active`),
 - optional eine **Farbe**, die für alle Verbindungen dieser Gruppe verwendet wird.
 
-Der initiale Sichtbarkeitsmodus kann optional im Modell unter `settings` über `selectConnectionsAndComponents` konfiguriert werden (Default: `false`).
+Viele Viewer-Verhaltensweisen haben **Standardeinstellungen**, können aber in der Modell-Datei unter `settings` explizit vorbelegt werden.
 
-![Connections Groups](/doc/img/connectionGroups.gif)
+> Details zu allen verfügbaren Settings, Defaults und Optionen siehe **Modellierungsanleitung für aia‑Modelle** in den Referenzen.
+
+![Connections Groups](/doc/img/connectionsGroups.gif)
 
 _Bild: Connections Groups._
 
@@ -226,24 +236,19 @@ Jede Connection beschreibt eine Verbindung zwischen zwei Komponenten. Wichtige A
   - `protocol` kann optional für Protokoll-/Technologieangaben genutzt werden (z.B. **REST/HTTPS**, **JDBC**).
   - Ein optionales `label` dient zur Beschriftung bei der Datenflußanimation.
 
-> Eine detaillierte Beschreibung aller Connection‑Attribute (inkl. `begin`, `end`, `points`) findet sich in der **Modellierungsanleitung für aia‑Modelle**, siehe Referenzen unten.
+> Eine detaillierte Beschreibung aller Connection‑Attribute findet sich in der **Modellierungsanleitung für aia‑Modelle**, siehe Referenzen unten.
 
 ## Datenfluss‑Animation als lebendiges Sequenzdiagramm
 
 Die definierten Connections dienen gleichzeitig als Basis für **Datenfluss‑Animationen** – im Sinne eines lebendigen Sequenzdiagramms:
 
 - Es werden die **aktiven ConnectionGroups** berücksichtigt.
-- Innerhalb jeder ConnectionGroup wird die Reihenfolge der einzelnen Connections über deren `order`-Attribut bestimmt.
-- Die Animation kann so Schritt für Schritt zeigen:
-  - welcher Actor welches Frontend anspricht,
-  - welche Services beteiligt sind,
-  - welche Datenbanken, Queues oder Scheduler ins Spiel kommen.
+- Innerhalb jeder ConnectionGroup berücksichtigt die Animation die Reihenfolge der einzelnen Connections über deren `order`-Attribut.
 
 Damit kann man:
 
-- die prozessuale Aspekte einer Zielarchitektur sukzessive betrachten oder erläutern,
+- die prozessuale Verlauf durch die angezeigte Zielarchitektur sukzessive betrachten oder erläutern,
 - die Sicht bei Bedarf auf einzelne Use Cases oder Teilprozesse fokussieren,
-- und die Darstellung jederzeit wieder auf die Gesamtarchitektur erweitern.
 
 ## Steuerung der Datenfluss‑Animation
 
@@ -262,6 +267,10 @@ Die Animation wird über das Schalterfeld **unten mittig** gesteuert:
   Schaltet zurück zur vorherigen Connection.
 - **End**  
   Springt zur letzten Connection der aktiven Sequenz, ohne die automatische Wiedergabe zu starten.
+- **Positions-Slider**  
+  Ermöglicht das direkte Navigieren innerhalb der aktiven Sequenzen. Beim Verschieben springt die Darstellung auf die gewählte Verbindungsposition.
+- **Positionsangabe**  
+  Zeigt die aktuelle Schrittposition innerhalb der Sequenz (z.B. `3/12`) und erleichtert die Orientierung bei längeren Abläufen.
 
 ![Animationssteuerung](/doc/img/animationControls.gif)
 
@@ -272,13 +281,13 @@ _Bild: Animations‑Steuerung._
 
 Mit wachsender Architektur steigt der Aufwand, konsistente aia‑Modelle manuell in JSON zu pflegen. KI‑Werkzeuge können hier helfen, die **Komplexität der Modellierung** deutlich zu reduzieren, ohne auf fachliche Qualität zu verzichten.
 
-## GitHub‑Agenten als Modellierungsassistent
+## Agenten als Modellierungsassistent
 
-In VS Code können GitHub‑Agenten (z.B. im „Build with Agent Mode“) als spezialisierte **Modellierungsassistenten** eingerichtet werden. Die Idee:
+In VS Code können GitHub‑Copilot Agenten (z.B. im „Build with Agent Mode“) als spezialisierte **Modellierungsassistenten** eingerichtet werden. Die Idee:
 
 - Im Repository werden **Kontextdateien** gepflegt, z.B.:
   - ein Style‑Guide für die JSON‑Struktur (`layers`, `components`, `connectionGroups`, `typeStyles`),
-  - eine Mapping‑Beschreibung, wie PlantUML‑Elemente auf aia‑Komponenten abgebildet werden,
+  - eine Mapping‑Beschreibung, wie z.B. PlantUML‑Elemente auf aia‑Komponenten abgebildet werden,
   - eine Modellierungsbeschreibung bzw. dieser Artikel.
 - Ein Agent („aia‑Model‑Agent“) nutzt diese Dateien als **feste Regeln und Beispiele**, um:
   - aus textuellen Beschreibungen oder
@@ -289,10 +298,10 @@ Routineaufgaben wie das Anlegen von Layern, Standard‑Typen (`frontend`, `servi
 
 ## PlantUML als Ausgangs- und Zwischenformat
 
-Viele Teams nutzen bereits **PlantUML‑Sequenzdiagramme**, um Abläufe zwischen Akteuren, UI, Services und Datenbanken zu beschreiben. Diese Diagramme eignen sich als **Ausgangspunkt und Zwischenstufe** für `aia`‑Modelle:
+Viele Teams nutzen bereits **PlantUML‑Sequenzdiagramme**, um Abläufe z.B. zwischen Akteuren, UI, Services und Datenbanken zu beschreiben. Diese Diagramme eignen sich als **Ausgangspunkt und Zwischenstufe** für `aia`‑Modelle:
 
 1. Fachliche Abläufe werden in PlantUML formuliert oder verfeinert.
-2. Ein GitHub‑Agent transformiert das Sequenzdiagramm in ein aia‑JSON‑Modell, indem er:
+2. Ein GitHub‑copilot Agent transformiert das Sequenzdiagramm in ein aia‑JSON‑Modell, indem er:
    - Teilnehmer (actor, participant, database) passenden Layern und Typen zuordnet,
    - IDs und Labels gemäß der Modellierungskonventionen erzeugt,
    - die Nachrichten im Sequenzdiagramm in `connectionGroups` und `connections` überführt.
@@ -316,7 +325,9 @@ https://jorgekue.github.io/arcInAction/aiaViewer.html
 
 Über verschiedene **Kameraperspektiven**, das gezielte Zu‑ und Abschalten von **ConnectionGroups** und **Datenfluss‑Animationen** kann die dargestellte Komplexität fein dosiert und an unterschiedliche Stakeholder angepasst werden – von der Entwicklung bis zum Management.
 
-**KI‑gestützte Agenten** wirken dabei als **Modellierungsassistenz**: Sie automatisieren formale und syntaktische Schritte, sichern Konventionen und Konsistenz und senken die Einstiegshürde, `aia`‑Modelle zu erstellen oder zu pflegen. In Kombination mit **PlantUML** als textuellem Format, einem GitHub‑Agenten als Transformator und dem `aia`‑Viewer als Visualisierung entsteht ein durchgängiger Weg von der textuellen Interaktionsbeschreibung zum 4D‑Modell – bei deutlich reduziertem manuellen Aufwand und besser beherrschbarer Modellierungskomplexität.
+**KI‑gestützte Agenten** wirken dabei als **Modellierungsassistenz**: Sie automatisieren formale und syntaktische Schritte, sichern Konventionen und Konsistenz und senken die Einstiegshürde, `aia`‑Modelle zu erstellen oder zu pflegen. In Kombination mit **PlantUML** als textuellem Format, einem GitHub‑Copilot Agenten als Transformator und dem `aia`‑Viewer als Visualisierung entsteht ein durchgängiger Weg von der textuellen Interaktionsbeschreibung zum 4D‑Modell – bei deutlich reduziertem manuellen Aufwand und besser beherrschbarer Modellierungskomplexität.
+
+Ein interaktiver Edit-Modus unterstützt pragmatisch bei einer der größten Herausforderung in der Modellierung, die Feinjustierung in der Linienführung, und das unabhängig davon, ob die Connections manuell oder per KI erzeugt wurden.
 
 ---
 
@@ -335,6 +346,9 @@ Juergen.Kuerpig@adesso-insurance-solutions.de
 
 - **Modellierungsanleitung für aia‑Modelle**  
   [Modellierungsanleitung](/doc/german/modelingInstructions.md)
+
+- **Interaktive Modellierung (Edit‑Modus)**  
+  [Interaktive Modellierung](/doc/german/interactiveModelling.md)
 
 - **GitHub‑Repository des Programms**  
   [arcInAction](https://github.com/jorgekue/arcInAction)

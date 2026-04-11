@@ -142,14 +142,22 @@ To assist with modeling, a **grid** can be displayed (checkbox in upper center):
 
 _Image: Grid for modeling._
 
-## Perspective: Interactive Modeling Mode
+## Interactive Edit Mode for Connections
 
-Currently, aia models are maintained purely **declaratively** in JSON. In a possible expansion stage, an **interactive modeling mode** is conceivable:
+In addition to the declarative JSON approach, the viewer provides an **interactive edit mode**.
 
-- Components and connections are placed directly in the viewer.
-- Changes are automatically written back to the JSON model.
+At the moment, the focus is on interactively editing **connections**:
 
-This would enable a significantly lower entry barrier, especially for non-technical users and moderators in workshops.
+- select connections,
+- insert path points,
+- move points,
+- remove points,
+- redo/undo,
+- export the result as JSON.
+
+The detailed description of edit mode and its capabilities is documented in a dedicated file:
+
+> see **Interactive Modeling (Edit Mode)** in the references.
 
 ---
 
@@ -263,6 +271,10 @@ The animation is controlled via the control panel **in the lower center**:
   Goes back to the previous connection.
 - **End**  
   Jumps to the last connection in the active sequence without starting auto-play.
+- **Position slider**  
+  Allows direct navigation within the active sequence. Moving the slider jumps the visualization to the selected connection position.
+- **Position indicator**  
+  Displays the current step position inside the sequence (e.g., `3/12`) and improves orientation in longer flows.
 
 ![Animation Controls](/doc/img/animationControls.gif)
 
@@ -319,6 +331,8 @@ Through various **camera perspectives**, the targeted toggling of **ConnectionGr
 
 **AI-supported agents** act as **modeling assistance**: They automate formal and syntactic steps, ensure conventions and consistency, and lower the entry barrier to create or maintain `aia` models. In combination with **PlantUML** as a textual format, a GitHub agent as transformer, and the `aia` viewer as visualization, a continuous path emerges from textual interaction description to 4D model – with significantly reduced manual effort and better manageable modeling complexity.
 
+An interactive edit mode also provides practical support for one of the toughest modeling challenges: fine-tuning individual connection routing, regardless of whether the connections were created manually or generated with AI support.
+
 ---
 
 # About the Author
@@ -336,6 +350,9 @@ Juergen.Kuerpig@adesso-insurance-solutions.de
 
 - **Modeling Instructions for aia Models**  
   [Modeling Instructions](/doc/english/modelingInstructions.md)
+
+- **Interactive Modeling (Edit Mode)**  
+  [Interactive Modeling](/doc/english/interactiveModelling.md)
 
 - **GitHub Repository of the Program**  
   [arcInAction](https://github.com/jorgekue/arcInAction)

@@ -312,16 +312,27 @@ Globale Datenfluss‑Einstellungen (optional, im JSON‑Root unter `settings`):
   "settings": {
     "flowDurationMin": 3,
     "flowSpeed": 2.5,
-    "animateComponents": true,
-    "selectConnectionsAndComponents": false
+    "animateComponents": false,
+    "showComponentPosition": false,
+    "selectConnectionsAndComponents": false,
+    "developerMode": false,
+    "undoRedoDepth": 50
   }
 }
 ```
 
 - `settings.flowDurationMin` (number): Mindestdauer der Animation in Sekunden. Verhindert, dass sehr kurze Verbindungen zu schnell animieren.
 - `settings.flowSpeed` (number): Animationsgeschwindigkeit in Grid‑Einheiten pro Sekunde.
-- `settings.animateComponents` (boolean): Aktiviert/deaktiviert das Hervorheben aktiver Komponenten während der Datenfluss‑Animation. Default ist `true`.
+- `settings.animateComponents` (boolean): Aktiviert/deaktiviert das Hervorheben aktiver Komponenten während der Datenfluss‑Animation. Default ist `false`.
+- `settings.showComponentPosition` (boolean): Aktiviert/deaktiviert die visuelle Positionsmarkierung der aktuell fokussierten Komponenten. Default ist `false`.
 - `settings.selectConnectionsAndComponents` (boolean, optional): Steuert den Sichtbarkeitsmodus im ConnectionGroups‑Panel. Bei `false` (Default) werden nur Verbindungslinien/-pfeile anhand aktiver Gruppen gefiltert. Bei `true` werden zusätzlich alle Komponenten ausgeblendet, die in den aktuell aktiven Gruppen nicht verwendet werden.
+- `settings.developerMode` (boolean): Blendet den Developer‑Mode im Viewer ein/aus. Der Schalter ist standardmäßig nicht sichtbar und wird nur bei explizitem `true` eingeblendet.
+- `settings.undoRedoDepth` (number): Maximale Historientiefe für Undo/Redo im interaktiven Edit‑Modus. Default ist `50`.
+
+Hinweis zu Standardeinstellungen:
+
+- Alle oben genannten Defaults greifen nur, wenn das jeweilige Setting in der Modell‑Datei nicht gesetzt ist.
+- Mit einem expliziten Wert in `settings` kann der Default pro Modell gezielt überschrieben werden.
 
 Sichtbarkeitsmodus im Viewer‑UI:
 
