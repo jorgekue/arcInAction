@@ -90,7 +90,7 @@ const defaultModelFiles = [
 const modelFiles = [...defaultModelFiles];
 
 /** @type {string} Currently loaded model file name */
-let currentModelFile = 'model/bKVMeilenstein1-model.json';
+let currentModelFile = 'model.json';
 
 
 /**
