@@ -94,7 +94,7 @@ Der Viewer folgt einem **deklarativen Modell‑Ansatz**:
 - Der **aia‑Viewer** liest ein **aia‑Modell** ein und stellt dieses im Browser interaktiv dar.
 - Das **aia‑Modell** wird in **JSON‑Notation** definiert.
 
-Anstatt die Architektur in einem Tool „zusammenzuklicken“, wird sie in einer strukturierten JSON‑Datei beschrieben. Diese dient als:
+Die Architektur wird bei diesem Ansatz grundsätzlich in einer strukturierten JSON‑Datei beschrieben. Diese dient als:
 
 - **Single Source of Truth** für die Darstellung,
 - potentieller **Export‑/Import‑Punkt** in andere Werkzeuge.
@@ -129,7 +129,7 @@ Aktuell werden folgende Typen unterstützt:
 - `actor` → als Spielfigur
 - `scheduler` → als Uhr
 
-Ein optionales Farbschema pro Typ wird über `typeStyles` definiert (z.B. Services in Grün, Datenbanken in Rot, Frontend in Blau).
+Ein optionales Farbschema kann pro Typ definiert werden, z.B. Services in Grün, Datenbanken in Rot, Frontend in Blau.
 
 ## Unterstützung durch das Grid
 
@@ -142,14 +142,22 @@ Zur Hilfestellung bei der Modellierung kann ein **Grid** eingeblendet werden (Ch
 
 _Bild: Grid für Modellierung._
 
-## Perspektive: Interaktiver Modellierungsmodus
+## Interaktiven Edit-Modus fuer Connections
 
-Derzeit werden aia‑Modelle rein **deklarativ** in JSON gepflegt. In einer möglichen Ausbaustufe ist ein **interaktiver Modellierungsmodus** denkbar:
+Neben dem deklarativen JSON‑Ansatz gibt es einen **interaktiven Edit‑Modus** im Viewer.
 
-- Komponenten und Verbindungen werden direkt im Viewer platziert.
-- Änderungen werden automatisch zurück in das JSON‑Modell geschrieben.
+Der Fokus liegt derzeit noch auf der interaktiven Bearbeitung von **Connections**:
 
-Dies würde insbesondere für nicht‑technische Anwender und Moderatoren in Workshops einen deutlich niedrigeren Einstieg ermöglichen.
+- Verbindungen auswählen,
+- Verlaufspunkte (Pathpoints) einfügen,
+- Punkte verschieben,
+- Punkte entfernen,
+- Redo/Undo
+- Ergebnis als JSON exportieren.
+
+Die detaillierte Beschreibung des Edit‑Modus mit seinen Fähigkeiten findet sich in einer eigenen Datei:
+
+> siehe **Interaktive Modellierung (Edit‑Modus)** in den Referenzen.
 
 ---
 
@@ -203,7 +211,9 @@ Pro ConnectionGroup werden u.a. definiert:
 - die Information, ob die Gruppe beim Laden des Modells initial **aktiv** sein soll (`active`),
 - optional eine **Farbe**, die für alle Verbindungen dieser Gruppe verwendet wird.
 
-Der initiale Sichtbarkeitsmodus kann optional im Modell unter `settings` über `selectConnectionsAndComponents` konfiguriert werden (Default: `false`).
+Viele Viewer-Verhaltensweisen haben **Standardeinstellungen**, können aber in der Modell-Datei unter `settings` explizit vorbelegt werden.
+
+> Details zu allen verfügbaren Settings, Defaults und Optionen siehe **Modellierungsanleitung für aia‑Modelle** in den Referenzen.
 
 ![Connections Groups](/doc/img/connectionsGroups.gif)
 
@@ -226,24 +236,19 @@ Jede Connection beschreibt eine Verbindung zwischen zwei Komponenten. Wichtige A
   - `protocol` kann optional für Protokoll-/Technologieangaben genutzt werden (z.B. **REST/HTTPS**, **JDBC**).
   - Ein optionales `label` dient zur Beschriftung bei der Datenflußanimation.
 
-> Eine detaillierte Beschreibung aller Connection‑Attribute (inkl. `begin`, `end`, `points`) findet sich in der **Modellierungsanleitung für aia‑Modelle**, siehe Referenzen unten.
+> Eine detaillierte Beschreibung aller Connection‑Attribute findet sich in der **Modellierungsanleitung für aia‑Modelle**, siehe Referenzen unten.
 
 ## Datenfluss‑Animation als lebendiges Sequenzdiagramm
 
 Die definierten Connections dienen gleichzeitig als Basis für **Datenfluss‑Animationen** – im Sinne eines lebendigen Sequenzdiagramms:
 
 - Es werden die **aktiven ConnectionGroups** berücksichtigt.
-- Innerhalb jeder ConnectionGroup wird die Reihenfolge der einzelnen Connections über deren `order`-Attribut bestimmt.
-- Die Animation kann so Schritt für Schritt zeigen:
-  - welcher Actor welches Frontend anspricht,
-  - welche Services beteiligt sind,
-  - welche Datenbanken, Queues oder Scheduler ins Spiel kommen.
+- Innerhalb jeder ConnectionGroup berücksichtigt die Animation die Reihenfolge der einzelnen Connections über deren `order`-Attribut.
 
 Damit kann man:
 
-- die prozessuale Aspekte einer Zielarchitektur sukzessive betrachten oder erläutern,
+- die prozessuale Verlauf durch die angezeigte Zielarchitektur sukzessive betrachten oder erläutern,
 - die Sicht bei Bedarf auf einzelne Use Cases oder Teilprozesse fokussieren,
-- und die Darstellung jederzeit wieder auf die Gesamtarchitektur erweitern.
 
 ## Steuerung der Datenfluss‑Animation
 
@@ -262,6 +267,10 @@ Die Animation wird über das Schalterfeld **unten mittig** gesteuert:
   Schaltet zurück zur vorherigen Connection.
 - **End**  
   Springt zur letzten Connection der aktiven Sequenz, ohne die automatische Wiedergabe zu starten.
+- **Positions-Slider**  
+  Ermöglicht das direkte Navigieren innerhalb der aktiven Sequenzen. Beim Verschieben springt die Darstellung auf die gewählte Verbindungsposition.
+- **Positionsangabe**  
+  Zeigt die aktuelle Schrittposition innerhalb der Sequenz (z.B. `3/12`) und erleichtert die Orientierung bei längeren Abläufen.
 
 ![Animationssteuerung](/doc/img/animationControls.gif)
 
@@ -318,6 +327,8 @@ https://jorgekue.github.io/arcInAction/aiaViewer.html
 
 **KI‑gestützte Agenten** wirken dabei als **Modellierungsassistenz**: Sie automatisieren formale und syntaktische Schritte, sichern Konventionen und Konsistenz und senken die Einstiegshürde, `aia`‑Modelle zu erstellen oder zu pflegen. In Kombination mit **PlantUML** als textuellem Format, einem GitHub‑Copilot Agenten als Transformator und dem `aia`‑Viewer als Visualisierung entsteht ein durchgängiger Weg von der textuellen Interaktionsbeschreibung zum 4D‑Modell – bei deutlich reduziertem manuellen Aufwand und besser beherrschbarer Modellierungskomplexität.
 
+Ein interaktiver Edit-Modus unterstützt pragmatisch bei einer der größten Herausforderung in der Modellierung, die Feinjustierung in der Linienführung, und das unabhängig davon, ob die Connections manuell oder per KI erzeugt wurden.
+
 ---
 
 # Über den Autor
@@ -335,6 +346,9 @@ Juergen.Kuerpig@adesso-insurance-solutions.de
 
 - **Modellierungsanleitung für aia‑Modelle**  
   [Modellierungsanleitung](/doc/german/modelingInstructions.md)
+
+- **Interaktive Modellierung (Edit‑Modus)**  
+  [Interaktive Modellierung](/doc/german/interactiveModelling.md)
 
 - **GitHub‑Repository des Programms**  
   [arcInAction](https://github.com/jorgekue/arcInAction)

@@ -5,3 +5,5 @@ model/
 aia-context/
 out/
 model-files.properties
+plantuml-components-context/
+components/

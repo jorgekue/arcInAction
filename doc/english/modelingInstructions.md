@@ -312,16 +312,27 @@ Global flow animation settings (optional, in JSON root under `settings`):
   "settings": {
     "flowDurationMin": 3,
     "flowSpeed": 2.5,
-    "animateComponents": true,
-    "selectConnectionsAndComponents": false
+    "animateComponents": false,
+    "showComponentPosition": false,
+    "selectConnectionsAndComponents": false,
+    "developerMode": false,
+    "undoRedoDepth": 50
   }
 }
 ```
 
 - `settings.flowDurationMin` (number): Minimum animation duration in seconds. Prevents very short connections from animating too fast.
 - `settings.flowSpeed` (number): Animation speed in grid units per second.
-- `settings.animateComponents` (boolean): Enables/disables active component highlighting during data flow animations. Default is `true`.
+- `settings.animateComponents` (boolean): Enables/disables active component highlighting during data flow animations. Default is `false`.
+- `settings.showComponentPosition` (boolean): Enables/disables visual position highlighting for currently focused components. Default is `false`.
 - `settings.selectConnectionsAndComponents` (boolean, optional): Controls visibility mode for the connection groups panel. If `false` (default), only connection lines/arrows are filtered by active groups. If `true`, components not used by the currently active groups are also hidden.
+- `settings.developerMode` (boolean): Shows/hides developer mode controls in the viewer. The toggle is hidden by default and becomes visible only when explicitly set to `true`.
+- `settings.undoRedoDepth` (number): Maximum history depth for undo/redo in interactive edit mode. Default is `50`.
+
+Notes on defaults:
+
+- All defaults listed above are only applied when the respective setting is not explicitly set in the model file.
+- With an explicit value in `settings`, the default can be overridden per model.
 
 Connection visibility mode behavior in the viewer UI:
 
