@@ -338,6 +338,7 @@
         "flowDurationMin": 2.0,
         "flowSpeed": 3.0,
         "animateComponents": false,
-        "selectConnectionsAndComponents": true
+        "selectConnectionsAndComponents": false,
+        "developerMode": true
     }
 }

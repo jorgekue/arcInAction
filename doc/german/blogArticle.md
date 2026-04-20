@@ -6,13 +6,15 @@ Wie lassen sich komplexe Software-Architekturen verständlich kommunizieren? Die
 
 In typischen IT-Projekten sollen nicht nur Techniker, sondern auch ein breiteres Publikum bei der Definition und Kommunikation einer Zielarchitektur informiert und mitgenommen werden. Klassische 2D-Diagramme (z.B. UML-Komponenten- und Sequenzdiagramme) sind hier oft entweder zu technisch oder visuell wenig ansprechend.
 
-Aus der Projektarbeit heraus ist deshalb die Idee für eine altenative Darstellung von Architektur entstanden, das mit dem Demo-Programm architecture in action (aia) verprobt wurde: Zielarchitekturen nicht nur zu dokumentieren, sondern besser erlebbar und diskutierbar zu machen.
+Aus der Projektarbeit heraus ist deshalb die Idee für eine alternative Darstellung von Architektur entstanden, das mit dem Demo-Programm architecture in action (aia) verprobt wurde: Zielarchitekturen nicht nur zu dokumentieren, sondern besser erlebbar und diskutierbar zu machen.
 
 Der Ansatz dahinter ist bewusst praxisnah: Architektur wird nicht nur als statisches Bild betrachtet, sondern als Zusammenspiel von Struktur und Ablauf. Dadurch entsteht eine nachvollziehbare Architektur-Erzählung, die zentrale Fragen im Projektkontext unterstützt: Was gehört zusammen, wie greifen Teile ineinander und wie entwickelt sich ein Prozess über die Zeit?
 
 Gerade in der Zusammenarbeit zwischen Fachlichkeit, IT und Entscheidungsebene hilft diese Sichtweise, Diskussionen zu versachlichen. Annahmen werden früher sichtbar, Unterschiede zwischen Zielbild und aktueller Situation lassen sich klarer benennen, und Architekturgespräche bleiben konstruktiv, ohne in unnötige Mikrodetails abzudriften.
 
 Die Kernelemente sind die Verbindung aus Struktur- und Ablaufperspektive, dargestellt als 3D-Modell mit zeitlicher Dynamik. Diese 4D-Sicht (3D plus Zeit) schafft zusätzliche Orientierung und hilft, Zusammenhänge im Gesamtbild schneller zu verstehen.
+
+Übergreifend gilt: Ideen wie aia lassen sich in Zeiten von GenAI deutlich schneller umsetzen als noch vor wenigen Jahren, weil Prototyping, Modellierung und Iteration wesentlich effizienter unterstützt werden.
 
 Technologisch basiert aia auf JavaScript und THREE.js als etablierter Grundlage für interaktive 3D-Darstellungen im Browser.
 
@@ -76,6 +78,8 @@ Diese andere, deutlich haptischere Sichtweise führt eher zu konstruktivem Feedb
 Im konkreten Projekteinsatz wurde dieser Ansatz durchweg positiv bewertet, insbesondere wegen der besseren Verständlichkeit in Abstimmungen zwischen Fachlichkeit und IT.
 
 In Kombination mit KI-gestützter Modellierungsassistenz entsteht damit ein pragmatischer Weg, Architekturarbeit nachvollziehbarer, konsistenter und anschlussfähiger für unterschiedliche Stakeholder zu machen.
+
+Der Weg von einer Idee zum nutzbaren Prototypen ist mit GenAI heute deutlich kürzer und kann damit auch schneller in den konkreten Projekteinsatz gebracht werden.
 
 ## Über den Autor
 
