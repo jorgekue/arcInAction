@@ -107,13 +107,15 @@ Standard‑Attribute einer Komponente:
 - `id (string, Pflicht)`: Eindeutige ID. Wird von Verbindungen (from, to) referenziert.
 - `label (string)`: Text auf dem 3D‑Objekt. Zeilenumbruch mit \n, z.B. "User\nService".
 - `type (string)`: Steuert 3D‑Darstellung und Style:
-        Zur Auswahl: `"actor", "frontend", "service", "database", "queue", "scheduler"`.
+  Zur Auswahl: `"actor", "frontend", "service", "database", "queue", "scheduler", "module"`.
 - `x, y (number)`: Position auf dem Layer in der X/Y‑Ebene.
 - `width, height, depth (number)`: Abmessungen des 3D‑Objekts (Interpretation abhängig von type).
 
 Spezielle Attribute für manche Typen:
 
 - `orientation (string, optional)`: Ausrichtung bestimmter Formen (z.B. "z" bei scheduler).
+- `moduleRef (string, optional)`: Pflicht fuer `type: "module"`; referenziert einen Eintrag in root `modules`.
+- `moduleParams (object, optional)`: Parent-seitige Runtime-Parameter fuer den Modulaufruf.
 
 ---
 # 5. Komponententypen im Beispielmodell
@@ -236,6 +238,65 @@ Beispiel:
 - Darstellung: DB‑Symbol (stehender Zylinder).
 - label auf jeder runder Stirnseite (oben/unten).
 - Farbe: typeStyles.database.color (im Beispiel: #e15759).
+
+## 5.6 Module: type = "module"
+
+Beispiel:
+
+```json
+{
+  "id": "MOD_REG",
+  "label": "Modul:\nRegistrierung",
+  "type": "module",
+  "moduleRef": "M_REGISTRATION",
+  "moduleParams": {
+    "tenant": "bkv-de",
+    "channel": "portal"
+  },
+  "x": 3,
+  "y": 0,
+  "width": 2.2,
+  "height": 1.1,
+  "depth": 1
+}
+```
+
+- Darstellung: service-aehnliche Box mit expliziter Modulkennzeichnung im Viewer.
+- Interaktion: Doppelklick oeffnet das referenzierte Modulmodell (Drill-Down).
+- Ruecksprung: `Back module` Button im View-Panel oder `Escape`.
+
+---
+
+## 5.7 Root-Bereich modules
+
+Der Root-Bereich `modules` definiert wiederverwendbare Child-Modelle und deren Defaults.
+
+```json
+{
+  "modules": [
+    {
+      "id": "M_REGISTRATION",
+      "name": "Registration Module",
+      "file": "modules/registration-module.json",
+      "parameters": {
+        "tenant": "unknown",
+        "channel": "unknown",
+        "apiProtocol": "unknown"
+      }
+    }
+  ]
+}
+```
+
+### Reihenfolge der Parameteraufloesung
+
+Fuer einen Modulaufruf werden effektive Runtime-Parameter in dieser Reihenfolge zusammengefuehrt:
+1. geerbte Parent-Runtime-Parameter
+2. Modul-Defaults (`modules[].parameters`)
+3. Parent-Overrides (`moduleParams` oder `parameters`)
+
+Template-Platzhalter im Child-JSON werden ueber `{{paramName}}` aufgeloest.
+Aufgeloeste Runtime-Werte stehen unter `settings.moduleRuntime.params` zur Verfuegung.
 
 ---
 # 6. Verbindungen: connectionGroups und connections

@@ -350,6 +350,12 @@ body {
     gap: 6px;
 }
 
+.view-panel-module-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 /* Overlay und Dialog wie gehabt */
 .aia-impressum-overlay {
   position: fixed;

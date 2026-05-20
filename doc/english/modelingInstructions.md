@@ -107,13 +107,15 @@ Standard attributes of a component:
 - `id (string, required)`: Unique ID. Referenced by connections (from, to).
 - `label (string)`: Text on the 3D object. Line break with \n, e.g., "User\nService".
 - `type (string)`: Controls 3D representation and style:
-        Options: `"actor", "frontend", "service", "database", "queue", "scheduler"`.
+  Options: `"actor", "frontend", "service", "database", "queue", "scheduler", "module"`.
 - `x, y (number)`: Position on the layer in the X/Y plane.
 - `width, height, depth (number)`: Dimensions of the 3D object (interpretation depends on type).
 
 Special attributes for some types:
 
 - `orientation (string, optional)`: Orientation of certain shapes (e.g., "z" for scheduler).
+- `moduleRef (string, optional)`: Required for `type: "module"`; references an entry in root `modules`.
+- `moduleParams (object, optional)`: Parent-side runtime parameter overrides for module invocation.
 
 ---
 # 5. Component Types in the Example Model
@@ -236,6 +238,65 @@ Example:
 - Representation: DB symbol (standing cylinder).
 - label on each round end face (top/bottom).
 - Color: typeStyles.database.color (in example: #e15759).
+
+## 5.6 Modules: type = "module"
+
+Example:
+
+```json
+{
+  "id": "MOD_REG",
+  "label": "Module:\nRegistration",
+  "type": "module",
+  "moduleRef": "M_REGISTRATION",
+  "moduleParams": {
+    "tenant": "bkv-de",
+    "channel": "portal"
+  },
+  "x": 3,
+  "y": 0,
+  "width": 2.2,
+  "height": 1.1,
+  "depth": 1
+}
+```
+
+- Representation: service-like box with explicit module marker in viewer.
+- Interaction: double-click enters referenced module model (drill-down).
+- Return navigation: `Back module` button in view panel, or `Escape`.
+
+---
+
+## 5.7 Root modules section
+
+The root-level `modules` section defines reusable child models and their defaults.
+
+```json
+{
+  "modules": [
+    {
+      "id": "M_REGISTRATION",
+      "name": "Registration Module",
+      "file": "modules/registration-module.json",
+      "parameters": {
+        "tenant": "unknown",
+        "channel": "unknown",
+        "apiProtocol": "unknown"
+      }
+    }
+  ]
+}
+```
+
+### Parameter resolution order
+
+For a module invocation, effective runtime parameters are merged in this order:
+1. inherited parent runtime parameters
+2. module definition defaults (`modules[].parameters`)
+3. parent component overrides (`moduleParams` or `parameters`)
+
+Template placeholders in child model JSON are resolved via `{{paramName}}`.
+Resolved runtime values are available in `settings.moduleRuntime.params`.
 
 ---
 # 6. Connections: connectionGroups and connections

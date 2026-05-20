@@ -92,6 +92,18 @@ const modelFiles = [...defaultModelFiles];
 /** @type {string} Currently loaded model file name */
 let currentModelFile = 'model.json';
 
+/** @type {{stack: Array<{model: Object, modelFile: string, groupSelection: {byOrderName: Map<string, boolean>, byName: Map<string, boolean>}|null, currentConnectionIndex: number, currentSelectedConnectionIndex: number, cameraPosition: THREE.Vector3, cameraTarget: THREE.Vector3, label: string}>, isNavigating: boolean}} Module drill-down navigation state */
+const moduleNavigationState = {
+    stack: [],
+    isNavigating: false
+};
+
+/** @type {THREE.Raycaster} Raycaster for module drill-down interaction */
+const moduleRaycaster = new THREE.Raycaster();
+
+/** @type {THREE.Vector2} Pointer coordinates for module drill-down interaction */
+const modulePointerNdc = new THREE.Vector2();
+
 
 /**
  * Parses a .properties text content into key/value pairs.
@@ -161,6 +173,515 @@ function parseModelFilesFromProperties(propertiesText) {
             file: (entry.file || '').trim()
         }))
         .filter(entry => entry.name && entry.file);
+}
+
+/**
+ * Returns true when a path is an absolute URL or absolute web path.
+ * @param {string} path
+ * @returns {boolean}
+ */
+function isAbsolutePathLike(path) {
+    return /^[a-z]+:\/\//i.test(path) || String(path).startsWith('/');
+}
+
+/**
+ * Normalizes a relative path by resolving '.' and '..' segments.
+ * @param {string} path
+ * @returns {string}
+ */
+function normalizeRelativePath(path) {
+    const parts = String(path).split('/');
+    const normalized = [];
+
+    parts.forEach(part => {
+        if (!part || part === '.') {
+            return;
+        }
+
+        if (part === '..') {
+            if (normalized.length > 0) {
+                normalized.pop();
+            }
+            return;
+        }
+
+        normalized.push(part);
+    });
+
+    return normalized.join('/');
+}
+
+/**
+ * Resolves a target file path relative to the currently loaded model file.
+ * @param {string} targetPath
+ * @returns {string}
+ */
+function resolvePathFromCurrentModel(targetPath) {
+    const rawTarget = String(targetPath || '').trim();
+    if (!rawTarget) {
+        return '';
+    }
+
+    if (isAbsolutePathLike(rawTarget)) {
+        return rawTarget;
+    }
+
+    const sourceFile = String(currentModelFile || '').trim();
+    const lastSlash = sourceFile.lastIndexOf('/');
+    const basePath = lastSlash >= 0 ? sourceFile.slice(0, lastSlash + 1) : '';
+
+    return normalizeRelativePath(`${basePath}${rawTarget}`);
+}
+
+/**
+ * Creates a JSON-safe deep clone of a model object.
+ * @param {Object} model
+ * @returns {Object|null}
+ */
+function cloneModelForNavigation(model) {
+    try {
+        return JSON.parse(JSON.stringify(model));
+    } catch (err) {
+        console.warn('Could not clone model for module navigation context.', err);
+        return null;
+    }
+}
+
+/**
+ * Finds module definition by component.moduleRef in current model.
+ * @param {Object} component
+ * @returns {Object|null}
+ */
+function getModuleDefinitionForComponent(component) {
+    const moduleRef = typeof component?.moduleRef === 'string' ? component.moduleRef.trim() : '';
+    if (!moduleRef) {
+        return null;
+    }
+
+    const modules = Array.isArray(modelData?.modules) ? modelData.modules : [];
+    const moduleDef = modules.find(entry => String(entry?.id || '').trim() === moduleRef);
+    return moduleDef || null;
+}
+
+/**
+ * Returns true when value is a non-array object.
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+function isPlainObject(value) {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Returns currently active module runtime parameters from model settings.
+ * @returns {Object<string, unknown>}
+ */
+function getCurrentModuleRuntimeParameters() {
+    const params = modelData?.settings?.moduleRuntime?.params;
+    return isPlainObject(params) ? { ...params } : {};
+}
+
+/**
+ * Resolves a template string using runtime parameters.
+ * Supported format: {{paramName}}
+ * @param {string} text
+ * @param {Object<string, unknown>} params
+ * @returns {unknown}
+ */
+function resolveTemplateString(text, params) {
+    const exactToken = String(text).match(/^\{\{\s*([\w.-]+)\s*\}\}$/);
+    if (exactToken) {
+        const key = exactToken[1];
+        return Object.prototype.hasOwnProperty.call(params, key) ? params[key] : text;
+    }
+
+    return String(text).replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (match, key) => {
+        if (!Object.prototype.hasOwnProperty.call(params, key)) {
+            return match;
+        }
+
+        const value = params[key];
+        return value == null ? '' : String(value);
+    });
+}
+
+/**
+ * Deep-resolves template tokens in object/array/string values.
+ * @param {unknown} value
+ * @param {Object<string, unknown>} params
+ * @returns {unknown}
+ */
+function resolveTemplateValues(value, params) {
+    if (typeof value === 'string') {
+        return resolveTemplateString(value, params);
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(item => resolveTemplateValues(item, params));
+    }
+
+    if (isPlainObject(value)) {
+        const result = {};
+        Object.entries(value).forEach(([key, nestedValue]) => {
+            result[key] = resolveTemplateValues(nestedValue, params);
+        });
+        return result;
+    }
+
+    return value;
+}
+
+/**
+ * Extracts module default parameters from module definition.
+ * Supports object and array syntax.
+ * @param {Object} moduleDef
+ * @returns {Object<string, unknown>}
+ */
+function extractModuleDefaultParameters(moduleDef) {
+    const parameters = moduleDef?.parameters;
+    if (isPlainObject(parameters)) {
+        return { ...parameters };
+    }
+
+    if (Array.isArray(parameters)) {
+        const defaults = {};
+        parameters.forEach(entry => {
+            if (!isPlainObject(entry)) {
+                return;
+            }
+
+            const name = typeof entry.name === 'string' ? entry.name.trim() : '';
+            if (!name) {
+                return;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(entry, 'default')) {
+                defaults[name] = entry.default;
+            } else if (Object.prototype.hasOwnProperty.call(entry, 'value')) {
+                defaults[name] = entry.value;
+            } else {
+                defaults[name] = 'unknown';
+            }
+        });
+        return defaults;
+    }
+
+    return {};
+}
+
+/**
+ * Extracts parent-provided parameter overrides from module component.
+ * Supported fields: component.moduleParams, component.parameters.
+ * @param {Object} component
+ * @returns {Object<string, unknown>}
+ */
+function extractModuleOverrideParameters(component) {
+    const overrides = {};
+
+    if (isPlainObject(component?.moduleParams)) {
+        Object.assign(overrides, component.moduleParams);
+    }
+
+    if (isPlainObject(component?.parameters)) {
+        Object.assign(overrides, component.parameters);
+    }
+
+    return overrides;
+}
+
+/**
+ * Resolves final parameter map for a module invocation.
+ * Merge order: inherited parent params -> module defaults -> parent overrides.
+ * @param {Object} moduleDef
+ * @param {Object} component
+ * @returns {Object<string, unknown>}
+ */
+function resolveModuleInvocationParameters(moduleDef, component) {
+    const inherited = getCurrentModuleRuntimeParameters();
+    const defaultsRaw = extractModuleDefaultParameters(moduleDef);
+    const defaultsResolved = resolveTemplateValues(defaultsRaw, inherited);
+
+    const overridesRaw = extractModuleOverrideParameters(component);
+    const overridesResolved = resolveTemplateValues(overridesRaw, {
+        ...inherited,
+        ...(isPlainObject(defaultsResolved) ? defaultsResolved : {})
+    });
+
+    return {
+        ...inherited,
+        ...(isPlainObject(defaultsResolved) ? defaultsResolved : {}),
+        ...(isPlainObject(overridesResolved) ? overridesResolved : {})
+    };
+}
+
+/**
+ * Applies resolved runtime parameters to a child module model.
+ * Replaces template tokens in all string values and writes runtime context.
+ * @param {Object} model
+ * @param {Object<string, unknown>} resolvedParams
+ * @param {Object} moduleDef
+ * @param {Object} component
+ * @returns {Object}
+ */
+function applyModuleParametersToModel(model, resolvedParams, moduleDef, component) {
+    const resolvedModel = resolveTemplateValues(model, resolvedParams);
+    if (!isPlainObject(resolvedModel)) {
+        return model;
+    }
+
+    if (!isPlainObject(resolvedModel.settings)) {
+        resolvedModel.settings = {};
+    }
+
+    resolvedModel.settings.moduleRuntime = {
+        moduleId: moduleDef?.id || null,
+        moduleName: moduleDef?.name || null,
+        parentComponentId: component?.id || null,
+        params: resolvedParams
+    };
+
+    return resolvedModel;
+}
+
+/**
+ * Updates module navigation controls in view panel.
+ */
+function updateModuleNavigationUI() {
+    const btnBack = document.getElementById('btn-module-back');
+    const status = document.getElementById('module-nav-status');
+
+    if (btnBack) {
+        btnBack.disabled = moduleNavigationState.stack.length === 0 || moduleNavigationState.isNavigating;
+    }
+
+    if (status) {
+        const labels = moduleNavigationState.stack.map(entry => entry.label).filter(Boolean);
+        status.textContent = labels.length > 0
+            ? `Context: root > ${labels.join(' > ')}`
+            : 'Context: root';
+    }
+}
+
+/**
+ * Ensures module navigation controls exist in view panel.
+ */
+function ensureModuleNavigationControls() {
+    const viewPanel = document.getElementById('view-panel');
+    if (!viewPanel) {
+        return;
+    }
+
+    if (document.getElementById('module-nav-controls')) {
+        updateModuleNavigationUI();
+        return;
+    }
+
+    const controls = document.createElement('div');
+    controls.id = 'module-nav-controls';
+    controls.className = 'view-panel-module-controls';
+
+    const backBtn = document.createElement('button');
+    backBtn.id = 'btn-module-back';
+    backBtn.className = 'view-panel-button';
+    backBtn.textContent = 'Back module';
+    backBtn.addEventListener('click', () => {
+        returnToParentModuleContext();
+    });
+
+    const status = document.createElement('span');
+    status.id = 'module-nav-status';
+    status.className = 'view-panel-status';
+
+    controls.appendChild(backBtn);
+    controls.appendChild(status);
+    viewPanel.appendChild(controls);
+
+    updateModuleNavigationUI();
+}
+
+/**
+ * Enters a referenced module model from a module component.
+ * @param {Object} component
+ * @returns {Promise<void>}
+ */
+function enterModuleFromComponent(component) {
+    if (moduleNavigationState.isNavigating) {
+        return Promise.resolve();
+    }
+
+    const moduleDef = getModuleDefinitionForComponent(component);
+    const targetFile = String(moduleDef?.file || '').trim();
+    if (!moduleDef || !targetFile) {
+        console.warn(`Module component '${component?.id || '?'}' has no resolvable module definition/file.`);
+        return Promise.resolve();
+    }
+
+    const parentModelClone = cloneModelForNavigation(modelData);
+    if (!parentModelClone) {
+        return Promise.resolve();
+    }
+
+    const resolvedFile = resolvePathFromCurrentModel(targetFile);
+    const entryLabel = moduleDef.name || moduleDef.id || component.label || component.id || 'module';
+
+    moduleNavigationState.stack.push({
+        model: parentModelClone,
+        modelFile: currentModelFile,
+        groupSelection: captureConnectionGroupSelectionState(),
+        currentConnectionIndex,
+        currentSelectedConnectionIndex,
+        cameraPosition: camera.position.clone(),
+        cameraTarget: controls.target.clone(),
+        label: String(entryLabel)
+    });
+
+    moduleNavigationState.isNavigating = true;
+    updateModuleNavigationUI();
+
+    const resolvedParams = resolveModuleInvocationParameters(moduleDef, component);
+
+    return fetchModelFromFile(resolvedFile)
+        .then(rawModuleModel => {
+            const moduleModel = applyModuleParametersToModel(rawModuleModel, resolvedParams, moduleDef, component);
+            currentModelFile = resolvedFile;
+            loadModelFromObject(moduleModel);
+            updateModelListUI();
+        })
+        .then(() => {
+            updateModuleNavigationUI();
+        })
+        .catch(err => {
+            console.error('Error entering module:', err);
+            moduleNavigationState.stack.pop();
+            updateModuleNavigationUI();
+        })
+        .finally(() => {
+            moduleNavigationState.isNavigating = false;
+            updateModuleNavigationUI();
+        });
+}
+
+/**
+ * Returns from current module context to the previous parent context.
+ */
+function returnToParentModuleContext() {
+    if (moduleNavigationState.isNavigating) {
+        return;
+    }
+
+    if (moduleNavigationState.stack.length === 0) {
+        return;
+    }
+
+    const parentContext = moduleNavigationState.stack.pop();
+    if (!parentContext?.model) {
+        updateModuleNavigationUI();
+        return;
+    }
+
+    moduleNavigationState.isNavigating = true;
+
+    loadModelFromObject(parentContext.model);
+    currentModelFile = parentContext.modelFile || currentModelFile;
+    restoreConnectionGroupSelectionState(parentContext.groupSelection || null);
+
+    currentConnectionIndex = Math.max(0, Math.min(parentContext.currentConnectionIndex || 0, connectionSequence.length));
+    currentSelectedConnectionIndex = connectionSequence.length > 0
+        ? Math.max(-1, Math.min(parentContext.currentSelectedConnectionIndex ?? -1, connectionSequence.length - 1))
+        : -1;
+
+    if (parentContext.cameraPosition && parentContext.cameraTarget) {
+        camera.position.copy(parentContext.cameraPosition);
+        controls.target.copy(parentContext.cameraTarget);
+        controls.update();
+    }
+
+    updateCurrentConnectionMarker();
+    updateFlowControlButtons();
+    updateModelListUI();
+
+    moduleNavigationState.isNavigating = false;
+    updateModuleNavigationUI();
+}
+
+/**
+ * Handles double-click drill-down into module components.
+ * @param {MouseEvent} event
+ */
+function onModuleComponentDoubleClick(event) {
+    if (moduleNavigationState.isNavigating) {
+        return;
+    }
+
+    const rect = renderer.domElement.getBoundingClientRect();
+    modulePointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    modulePointerNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    moduleRaycaster.setFromCamera(modulePointerNdc, camera);
+
+    const roots = [];
+    componentMeshes.forEach(({ mesh }) => {
+        if (mesh?.visible) {
+            roots.push(mesh);
+        }
+    });
+
+    if (roots.length === 0) {
+        return;
+    }
+
+    const intersections = moduleRaycaster.intersectObjects(roots, true);
+    if (!Array.isArray(intersections) || intersections.length === 0) {
+        return;
+    }
+
+    let hitObject = intersections[0].object;
+    while (hitObject && (!hitObject.userData || !hitObject.userData.id)) {
+        hitObject = hitObject.parent;
+    }
+
+    const componentId = hitObject?.userData?.id;
+    const componentEntry = componentId ? componentMeshes.get(componentId) : null;
+    const component = componentEntry?.data || null;
+
+    if (!component) {
+        return;
+    }
+
+    const isModuleComponent = component.type === 'module' || !!component.moduleRef;
+    if (!isModuleComponent) {
+        return;
+    }
+
+    event.preventDefault();
+    enterModuleFromComponent(component);
+}
+
+/**
+ * Handles keyboard shortcut for returning to parent module context.
+ * Escape always returns when in module context. Backspace returns when dev mode is off.
+ * @param {KeyboardEvent} event
+ */
+function onModuleNavigationKeyDown(event) {
+    if (moduleNavigationState.stack.length === 0 || moduleNavigationState.isNavigating) {
+        return;
+    }
+
+    const target = event.target;
+    const targetTag = target && target.tagName ? String(target.tagName).toLowerCase() : '';
+    const isTypingTarget =
+        targetTag === 'input' ||
+        targetTag === 'textarea' ||
+        targetTag === 'select' ||
+        !!target?.isContentEditable;
+    if (isTypingTarget) {
+        return;
+    }
+
+    const key = String(event.key || '').toLowerCase();
+    if (key === 'escape' || (key === 'backspace' && !developerModeState.enabled)) {
+        event.preventDefault();
+        returnToParentModuleContext();
+    }
 }
 
 /**
@@ -1891,7 +2412,7 @@ function normalizeComponentLabelText(text) {
 
 /**
  * Creates 3D meshes for all components in the model.
- * Supports multiple component types: boxes, cylinders (databases), queues, schedulers, actors.
+ * Supports multiple component types: boxes, cylinders (databases), queues, schedulers, actors, modules.
  * @param {Object} model - The model object
  * @param {Object} [model.typeStyles] - Style definitions per component type
  * @param {Array<Object>} [model.layers] - Array of layer objects containing components
@@ -1986,6 +2507,11 @@ function createComponents(model) {
                         radius = Math.max(width, height) / 2;
                         const bodyHeight = depth * 0.5; // Slightly flatter than height
                         geometry = new THREE.CylinderGeometry(radius, radius, bodyHeight, 32);
+                        break;
+                    }
+                    case 'module': {
+                        // Module baseline rendering in v1: service-like box with explicit marker.
+                        geometry = new THREE.BoxGeometry(width, height, depth);
                         break;
                     }
 
@@ -2230,6 +2756,14 @@ function createComponents(model) {
                 }
             }
 
+            // Baseline module marker for visual distinction from regular services.
+            if (c.type === 'module') {
+                const marker = createTextSprite('MODULE');
+                marker.scale.set(0.95, 0.35, 1);
+                marker.position.set((width / 2) - 0.5, (height / 2) + 0.25, (depth / 2) + 0.02);
+                mesh.add(marker);
+            }
+
 
 
             // Calculate center (for connections etc.)
@@ -2239,6 +2773,43 @@ function createComponents(model) {
             componentCenters.set(c.id, center);
             componentMeshes.set(c.id, { mesh, data: c });
 
+        });
+    });
+}
+
+/**
+ * Validates optional module definitions and references.
+ * Logs warnings for invalid moduleRef usage so baseline feature can fail soft.
+ * @param {Object} model - Loaded model object
+ */
+function validateModelModuleReferences(model) {
+    const modules = Array.isArray(model?.modules) ? model.modules : [];
+    const moduleIds = new Set(
+        modules
+            .map(m => (m && typeof m.id === 'string') ? m.id.trim() : '')
+            .filter(Boolean)
+    );
+
+    (model?.layers || []).forEach((layer, layerIndex) => {
+        (layer?.components || []).forEach((component, componentIndex) => {
+            const hasModuleRef = typeof component?.moduleRef === 'string' && component.moduleRef.trim().length > 0;
+            const isModuleType = component?.type === 'module';
+
+            if (!isModuleType && !hasModuleRef) {
+                return;
+            }
+
+            const compId = component?.id || `layer${layerIndex + 1}-component${componentIndex + 1}`;
+            const ref = hasModuleRef ? component.moduleRef.trim() : '';
+
+            if (!hasModuleRef) {
+                console.warn(`Module component '${compId}' has no moduleRef.`);
+                return;
+            }
+
+            if (!moduleIds.has(ref)) {
+                console.warn(`Component '${compId}' references unknown moduleRef '${ref}'.`);
+            }
         });
     });
 }
@@ -2910,6 +3481,7 @@ function loadModelFromObject(model) {
     }
 
     applyFlowTimingSettingsFromModel(model);
+    validateModelModuleReferences(model);
     syncViewPanelStateFromSettings();
     addLayerLabels(model);
     createComponents(model);
@@ -2961,13 +3533,7 @@ function setupConnectionGroupsFromModel(model) {
 function loadModelFromFile(fileName) {
     currentModelFile = fileName;
 
-    return fetch(fileName)
-        .then(resp => {
-            if (!resp.ok) {
-                throw new Error(`HTTP ${resp.status} while loading ${fileName}`);
-            }
-            return resp.json();
-        })
+    return fetchModelFromFile(fileName)
         .then(model => {
             loadModelFromObject(model);
             updateModelListUI();
@@ -2975,6 +3541,21 @@ function loadModelFromFile(fileName) {
         .catch(err => {
             console.error('Error loading model:', err);
             alert('Error loading model: ' + fileName);
+        });
+}
+
+/**
+ * Loads and parses a model JSON file via fetch.
+ * @param {string} fileName - Path to the JSON model file
+ * @returns {Promise<Object>} Promise with parsed model object
+ */
+function fetchModelFromFile(fileName) {
+    return fetch(fileName)
+        .then(resp => {
+            if (!resp.ok) {
+                throw new Error(`HTTP ${resp.status} while loading ${fileName}`);
+            }
+            return resp.json();
         });
 }
 
@@ -3259,6 +3840,8 @@ function initViewPanel() {
         exportDeveloperModelJson();
     });
 
+    ensureModuleNavigationControls();
+
     updateDeveloperModeUI();
 }
 
@@ -3427,7 +4010,9 @@ renderer.domElement.addEventListener('pointerdown', onDeveloperPointerDown);
 renderer.domElement.addEventListener('pointermove', onDeveloperPointerMove);
 renderer.domElement.addEventListener('pointerup', onDeveloperPointerUp);
 renderer.domElement.addEventListener('pointercancel', onDeveloperPointerUp);
+renderer.domElement.addEventListener('dblclick', onModuleComponentDoubleClick);
 window.addEventListener('keydown', onDeveloperKeyDown);
+window.addEventListener('keydown', onModuleNavigationKeyDown);
 
 // ============================================================================
 // Animation Loop
@@ -3516,7 +4101,10 @@ fileInput.addEventListener('change', event => {
     reader.onload = e => {
         try {
             const json = JSON.parse(e.target.result);
+            currentModelFile = file.name || 'local-upload.json';
+            moduleNavigationState.stack = [];
             loadModelFromObject(json);
+            updateModuleNavigationUI();
         } catch (err) {
             console.error('Error parsing JSON file:', err);
             alert('The file is not a valid JSON model file.');
