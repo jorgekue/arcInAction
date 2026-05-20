@@ -98,6 +98,12 @@ const moduleNavigationState = {
     isNavigating: false
 };
 
+/** @type {{isOpen: boolean, resolve: ((value: Object|null) => void)|null}} Runtime state for module call selection dialog */
+const moduleCallDialogState = {
+    isOpen: false,
+    resolve: null
+};
+
 /** @type {THREE.Raycaster} Raycaster for module drill-down interaction */
 const moduleRaycaster = new THREE.Raycaster();
 
@@ -390,19 +396,49 @@ function extractModuleOverrideParameters(component) {
 }
 
 /**
+ * Extracts module call parameter overrides from a connection.
+ * Supported fields: connection.moduleParams, connection.moduleCallParams.
+ * @param {Object|null} connection
+ * @returns {Object<string, unknown>}
+ */
+function extractModuleOverrideParametersFromConnection(connection) {
+    const overrides = {};
+    if (!connection) {
+        return overrides;
+    }
+
+    if (isPlainObject(connection.moduleParams)) {
+        Object.assign(overrides, connection.moduleParams);
+    }
+
+    if (isPlainObject(connection.moduleCallParams)) {
+        Object.assign(overrides, connection.moduleCallParams);
+    }
+
+    return overrides;
+}
+
+/**
  * Resolves final parameter map for a module invocation.
  * Merge order: inherited parent params -> module defaults -> parent overrides.
  * @param {Object} moduleDef
  * @param {Object} component
+ * @param {Object|null} callConnection
  * @returns {Object<string, unknown>}
  */
-function resolveModuleInvocationParameters(moduleDef, component) {
+function resolveModuleInvocationParameters(moduleDef, component, callConnection) {
     const inherited = getCurrentModuleRuntimeParameters();
     const defaultsRaw = extractModuleDefaultParameters(moduleDef);
     const defaultsResolved = resolveTemplateValues(defaultsRaw, inherited);
 
-    const overridesRaw = extractModuleOverrideParameters(component);
-    const overridesResolved = resolveTemplateValues(overridesRaw, {
+    const componentOverridesRaw = extractModuleOverrideParameters(component);
+    const componentOverridesResolved = resolveTemplateValues(componentOverridesRaw, {
+        ...inherited,
+        ...(isPlainObject(defaultsResolved) ? defaultsResolved : {})
+    });
+
+    const connectionOverridesRaw = extractModuleOverrideParametersFromConnection(callConnection);
+    const connectionOverridesResolved = resolveTemplateValues(connectionOverridesRaw, {
         ...inherited,
         ...(isPlainObject(defaultsResolved) ? defaultsResolved : {})
     });
@@ -410,7 +446,8 @@ function resolveModuleInvocationParameters(moduleDef, component) {
     return {
         ...inherited,
         ...(isPlainObject(defaultsResolved) ? defaultsResolved : {}),
-        ...(isPlainObject(overridesResolved) ? overridesResolved : {})
+        ...(isPlainObject(componentOverridesResolved) ? componentOverridesResolved : {}),
+        ...(isPlainObject(connectionOverridesResolved) ? connectionOverridesResolved : {})
     };
 }
 
@@ -421,9 +458,10 @@ function resolveModuleInvocationParameters(moduleDef, component) {
  * @param {Object<string, unknown>} resolvedParams
  * @param {Object} moduleDef
  * @param {Object} component
+ * @param {Object|null} callSelection
  * @returns {Object}
  */
-function applyModuleParametersToModel(model, resolvedParams, moduleDef, component) {
+function applyModuleParametersToModel(model, resolvedParams, moduleDef, component, callSelection = null) {
     const resolvedModel = resolveTemplateValues(model, resolvedParams);
     if (!isPlainObject(resolvedModel)) {
         return model;
@@ -437,10 +475,262 @@ function applyModuleParametersToModel(model, resolvedParams, moduleDef, componen
         moduleId: moduleDef?.id || null,
         moduleName: moduleDef?.name || null,
         parentComponentId: component?.id || null,
+        callConnection: callSelection?.connection ? {
+            id: callSelection.connection.id || null,
+            from: callSelection.connection.from || null,
+            to: callSelection.connection.to || null,
+            order: callSelection.connection.order ?? null,
+            label: callSelection.connection.label || null,
+            labelModuleCall: getConnectionModuleCallLabel(callSelection.connection),
+            groupName: callSelection.groupName || null
+        } : null,
         params: resolvedParams
     };
 
     return resolvedModel;
+}
+
+/**
+ * Returns module call label from connection.
+ * @param {Object|null} connection
+ * @returns {string|null}
+ */
+function getConnectionModuleCallLabel(connection) {
+    const value = typeof connection?.labelModuleCall === 'string' ? connection.labelModuleCall.trim() : '';
+    return value || null;
+}
+
+/**
+ * Builds a user-facing label for a module call connection option.
+ * @param {{connection: Object, groupName: string}} entry
+ * @returns {string}
+ */
+function getModuleCallDisplayLabel(entry) {
+    const conn = entry?.connection || {};
+    const groupName = entry?.groupName || 'Group';
+    const callLabel = getConnectionModuleCallLabel(conn) || conn.label || conn.id || `${conn.from || '?'} -> ${conn.to || '?'}`;
+    return `${groupName} -> ${callLabel}`;
+}
+
+/**
+ * Collects visible module call connections for a module component.
+ * Only visible connections are considered, therefore active connection group filtering is respected.
+ * @param {string} componentId
+ * @returns {Array<{connection: Object, groupName: string}>}
+ */
+function getVisibleModuleCallConnections(componentId) {
+    const incomingCalls = [];
+    const fallbackCalls = [];
+    if (!componentId) {
+        return incomingCalls;
+    }
+
+    scene.traverse(obj => {
+        if (!obj?.visible || !obj?.userData) {
+            return;
+        }
+
+        if (obj.userData.type !== 'connection') {
+            return;
+        }
+
+        const connection = obj.userData.connection;
+        if (!connection) {
+            return;
+        }
+
+        const isIncomingCall = connection.to === componentId;
+        const isFallbackRelated = connection.from === componentId;
+        if (!isIncomingCall && !isFallbackRelated) {
+            return;
+        }
+
+        const entry = {
+            connection,
+            groupName: obj.userData.groupName || 'Group'
+        };
+
+        if (isIncomingCall) {
+            incomingCalls.push(entry);
+        } else {
+            fallbackCalls.push(entry);
+        }
+    });
+
+    const selectedCalls = incomingCalls.length > 0 ? incomingCalls : fallbackCalls;
+
+    selectedCalls.sort((a, b) => {
+        const orderA = Number.isFinite(Number(a.connection?.order)) ? Number(a.connection.order) : Number.MAX_SAFE_INTEGER;
+        const orderB = Number.isFinite(Number(b.connection?.order)) ? Number(b.connection.order) : Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) {
+            return orderA - orderB;
+        }
+        return getModuleCallDisplayLabel(a).localeCompare(getModuleCallDisplayLabel(b));
+    });
+
+    return selectedCalls;
+}
+
+/**
+ * Returns references to module call dialog elements, creating them if needed.
+ * @returns {{overlay: HTMLDivElement, title: HTMLDivElement, list: HTMLUListElement, btnCancel: HTMLButtonElement}}
+ */
+function ensureModuleCallDialogElements() {
+    let overlay = document.getElementById('module-call-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'module-call-overlay';
+        overlay.className = 'module-call-overlay';
+
+        overlay.innerHTML = `
+            <div class="module-call-dialog" role="dialog" aria-modal="true" aria-label="Select module call">
+                <div id="module-call-title" class="module-call-title"></div>
+                <div class="module-call-list-wrap">
+                    <ul id="module-call-list" class="module-call-list"></ul>
+                </div>
+                <div class="module-call-actions">
+                    <button id="btn-module-call-cancel" class="view-panel-button">Cancel</button>
+                </div>
+            </div>`;
+
+        document.body.appendChild(overlay);
+    }
+
+    return {
+        overlay,
+        title: overlay.querySelector('#module-call-title'),
+        list: overlay.querySelector('#module-call-list'),
+        btnCancel: overlay.querySelector('#btn-module-call-cancel')
+    };
+}
+
+/**
+ * Opens module call selection dialog and resolves selected call.
+ * If only one call exists, it is auto-selected and no dialog is shown.
+ * @param {Object} component
+ * @param {Array<{connection: Object, groupName: string}>} callOptions
+ * @returns {Promise<{connection: Object, groupName: string}|null>}
+ */
+function selectModuleCallForComponent(component, callOptions) {
+    if (!Array.isArray(callOptions) || callOptions.length === 0) {
+        return Promise.resolve(null);
+    }
+
+    if (callOptions.length === 1) {
+        return Promise.resolve(callOptions[0]);
+    }
+
+    const { overlay, title, list, btnCancel } = ensureModuleCallDialogElements();
+    title.textContent = `Select module call for ${component?.label || component?.id || 'module'}`;
+    list.innerHTML = '';
+
+    callOptions.forEach((entry, index) => {
+        const li = document.createElement('li');
+        li.className = 'module-call-item';
+        li.textContent = getModuleCallDisplayLabel(entry);
+        li.tabIndex = 0;
+        li.dataset.index = String(index);
+        list.appendChild(li);
+    });
+
+    const closeDialog = (selection) => {
+        if (!moduleCallDialogState.isOpen) {
+            return;
+        }
+
+        moduleCallDialogState.isOpen = false;
+        overlay.style.display = 'none';
+
+        document.removeEventListener('keydown', onKeyDown);
+        btnCancel.removeEventListener('click', onCancel);
+        overlay.removeEventListener('click', onOverlayClick);
+        list.removeEventListener('click', onListClick);
+        list.removeEventListener('keydown', onListKeyDown);
+
+        const resolver = moduleCallDialogState.resolve;
+        moduleCallDialogState.resolve = null;
+        if (resolver) {
+            resolver(selection);
+        }
+    };
+
+    const chooseIndex = (index) => {
+        const chosen = Number.isInteger(index) && index >= 0 && index < callOptions.length
+            ? callOptions[index]
+            : null;
+        closeDialog(chosen);
+    };
+
+    const onOpen = () => {
+        const index = Number(list.querySelector('.module-call-item:focus')?.dataset.index);
+        chooseIndex(index);
+    };
+
+    const onListClick = (event) => {
+        const item = event.target?.closest?.('.module-call-item');
+        if (!item) {
+            return;
+        }
+
+        const index = Number(item.dataset.index);
+        chooseIndex(index);
+    };
+
+    const onListKeyDown = (event) => {
+        const item = event.target?.closest?.('.module-call-item');
+        if (!item) {
+            return;
+        }
+
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            const index = Number(item.dataset.index);
+            chooseIndex(index);
+        }
+    };
+
+    const onCancel = () => {
+        closeDialog(null);
+    };
+
+    const onOverlayClick = (event) => {
+        if (event.target === overlay) {
+            closeDialog(null);
+        }
+    };
+
+    const onKeyDown = (event) => {
+        if (!moduleCallDialogState.isOpen) {
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeDialog(null);
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            onOpen();
+        }
+    };
+
+    moduleCallDialogState.isOpen = true;
+    moduleCallDialogState.resolve = null;
+    overlay.style.display = 'flex';
+
+    btnCancel.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onOverlayClick);
+    list.addEventListener('click', onListClick);
+    list.addEventListener('keydown', onListKeyDown);
+    document.addEventListener('keydown', onKeyDown);
+    const firstItem = list.querySelector('.module-call-item');
+    firstItem?.focus();
+
+    return new Promise(resolve => {
+        moduleCallDialogState.resolve = resolve;
+    });
 }
 
 /**
@@ -502,9 +792,10 @@ function ensureModuleNavigationControls() {
 /**
  * Enters a referenced module model from a module component.
  * @param {Object} component
+ * @param {{connection: Object, groupName: string}|null} callSelection
  * @returns {Promise<void>}
  */
-function enterModuleFromComponent(component) {
+function enterModuleFromComponent(component, callSelection = null) {
     if (moduleNavigationState.isNavigating) {
         return Promise.resolve();
     }
@@ -522,7 +813,9 @@ function enterModuleFromComponent(component) {
     }
 
     const resolvedFile = resolvePathFromCurrentModel(targetFile);
-    const entryLabel = moduleDef.name || moduleDef.id || component.label || component.id || 'module';
+    const callLabel = getConnectionModuleCallLabel(callSelection?.connection) || callSelection?.connection?.label || callSelection?.connection?.id || null;
+    const entryLabelBase = moduleDef.name || moduleDef.id || component.label || component.id || 'module';
+    const entryLabel = callLabel ? `${entryLabelBase}: ${callLabel}` : entryLabelBase;
 
     moduleNavigationState.stack.push({
         model: parentModelClone,
@@ -538,11 +831,11 @@ function enterModuleFromComponent(component) {
     moduleNavigationState.isNavigating = true;
     updateModuleNavigationUI();
 
-    const resolvedParams = resolveModuleInvocationParameters(moduleDef, component);
+    const resolvedParams = resolveModuleInvocationParameters(moduleDef, component, callSelection?.connection || null);
 
     return fetchModelFromFile(resolvedFile)
         .then(rawModuleModel => {
-            const moduleModel = applyModuleParametersToModel(rawModuleModel, resolvedParams, moduleDef, component);
+            const moduleModel = applyModuleParametersToModel(rawModuleModel, resolvedParams, moduleDef, component, callSelection);
             currentModelFile = resolvedFile;
             loadModelFromObject(moduleModel);
             updateModelListUI();
@@ -608,7 +901,7 @@ function returnToParentModuleContext() {
  * Handles double-click drill-down into module components.
  * @param {MouseEvent} event
  */
-function onModuleComponentDoubleClick(event) {
+async function onModuleComponentDoubleClick(event) {
     if (moduleNavigationState.isNavigating) {
         return;
     }
@@ -653,7 +946,14 @@ function onModuleComponentDoubleClick(event) {
     }
 
     event.preventDefault();
-    enterModuleFromComponent(component);
+
+    const callOptions = getVisibleModuleCallConnections(component.id);
+    const selectedCall = await selectModuleCallForComponent(component, callOptions);
+    if (callOptions.length > 1 && !selectedCall) {
+        return;
+    }
+
+    enterModuleFromComponent(component, selectedCall);
 }
 
 /**
@@ -662,6 +962,15 @@ function onModuleComponentDoubleClick(event) {
  * @param {KeyboardEvent} event
  */
 function onModuleNavigationKeyDown(event) {
+    if (moduleCallDialogState.isOpen) {
+        return;
+    }
+
+    if (event.defaultPrevented) {
+        return;
+    }
+    const callLabel = getConnectionModuleCallLabel(callSelection?.connection) || callSelection?.connection?.label || callSelection?.connection?.id || null;
+
     if (moduleNavigationState.stack.length === 0 || moduleNavigationState.isNavigating) {
         return;
     }
@@ -691,7 +1000,7 @@ function onModuleNavigationKeyDown(event) {
  */
 async function loadAdditionalModelFilesFromProperties() {
     try {
-        const response = await fetch(externalModelPropertiesFile);
+        const response = await fetch(externalModelPropertiesFile, { cache: 'no-store' });
         if (!response.ok) {
             return;
         }
@@ -3550,7 +3859,7 @@ function loadModelFromFile(fileName) {
  * @returns {Promise<Object>} Promise with parsed model object
  */
 function fetchModelFromFile(fileName) {
-    return fetch(fileName)
+    return fetch(fileName, { cache: 'no-store' })
         .then(resp => {
             if (!resp.ok) {
                 throw new Error(`HTTP ${resp.status} while loading ${fileName}`);

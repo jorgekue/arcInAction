@@ -115,7 +115,7 @@ Special attributes for some types:
 
 - `orientation (string, optional)`: Orientation of certain shapes (e.g., "z" for scheduler).
 - `moduleRef (string, optional)`: Required for `type: "module"`; references an entry in root `modules`.
-- `moduleParams (object, optional)`: Parent-side runtime parameter overrides for module invocation.
+- Runtime module call parameters are configured on the invoking connection (see section 6.2).
 
 ---
 # 5. Component Types in the Example Model
@@ -249,10 +249,6 @@ Example:
   "label": "Module:\nRegistration",
   "type": "module",
   "moduleRef": "M_REGISTRATION",
-  "moduleParams": {
-    "tenant": "bkv-de",
-    "channel": "portal"
-  },
   "x": 3,
   "y": 0,
   "width": 2.2,
@@ -293,10 +289,39 @@ The root-level `modules` section defines reusable child models and their default
 For a module invocation, effective runtime parameters are merged in this order:
 1. inherited parent runtime parameters
 2. module definition defaults (`modules[].parameters`)
-3. parent component overrides (`moduleParams` or `parameters`)
+3. module call overrides on the selected connection (`moduleCallParams` or `moduleParams`)
 
 Template placeholders in child model JSON are resolved via `{{paramName}}`.
 Resolved runtime values are available in `settings.moduleRuntime.params`.
+
+---
+
+## 6.2 Module call attributes on connections
+
+For module components with multiple possible calls, the viewer opens a selection popup on double-click.
+Only currently visible connections are considered (connection group filtering is respected).
+
+Use these optional connection attributes:
+
+- `labelModuleCall (string)`: dedicated display label in the module-call selection popup.
+- `moduleCallParams (object)`: call-specific runtime parameter overrides for module invocation.
+
+Example:
+
+```json
+{
+  "id": "PARENT-2",
+  "from": "ORCH1",
+  "to": "MOD_REG",
+  "label": "Delegate to module",
+  "labelModuleCall": "Portal registration",
+  "moduleCallParams": {
+    "tenant": "bkv-de",
+    "channel": "portal",
+    "apiProtocol": "HTTPS/REST"
+  }
+}
+```
 
 ---
 # 6. Connections: connectionGroups and connections

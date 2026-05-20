@@ -35,12 +35,6 @@
           "label": "Modul:\nRegistrierung",
           "type": "module",
           "moduleRef": "M_REGISTRATION",
-          "moduleParams": {
-            "tenant": "bkv-de",
-            "channel": "portal",
-            "apiProtocol": "HTTPS/REST",
-            "flowName": "registration"
-          },
           "x": 3,
           "y": 0,
           "width": 2.2,
@@ -83,7 +77,36 @@
           "from": "ORCH1",
           "to": "MOD_REG",
           "order": 102,
-          "label": "Delegate to module"
+          "label": "Delegate to module",
+          "labelModuleCall": "Portal registration",
+          "moduleCallParams": {
+            "tenant": "bkv-de",
+            "channel": "portal",
+            "apiProtocol": "HTTPS/REST",
+            "flowName": "registration-portal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "batch flow",
+      "order": 2,
+      "active": false,
+      "connections": [
+        {
+          "id": "PARENT-3",
+          "protocol": "INTERNAL",
+          "from": "ORCH1",
+          "to": "MOD_REG",
+          "order": 201,
+          "label": "Delegate batch to module",
+          "labelModuleCall": "Batch registration",
+          "moduleCallParams": {
+            "tenant": "bkv-batch",
+            "channel": "batch",
+            "apiProtocol": "MQ",
+            "flowName": "registration-batch"
+          }
         }
       ]
     }

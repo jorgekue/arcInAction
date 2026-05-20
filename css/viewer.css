@@ -356,6 +356,71 @@ body {
     gap: 6px;
 }
 
+.module-call-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 2100;
+}
+
+.module-call-dialog {
+    min-width: 360px;
+    max-width: 560px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    border: 1px solid #666;
+    border-radius: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.module-call-title {
+    font-size: 12px;
+    font-weight: 700;
+    margin: 0 0 2px 0;
+}
+
+.module-call-list-wrap {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid #666;
+}
+
+.module-call-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.module-call-item {
+    padding: 4px 6px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.module-call-item:last-child {
+    border-bottom: none;
+}
+
+.module-call-item:hover,
+.module-call-item:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.module-call-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
 /* Overlay und Dialog wie gehabt */
 .aia-impressum-overlay {
   position: fixed;

@@ -115,7 +115,7 @@ Spezielle Attribute für manche Typen:
 
 - `orientation (string, optional)`: Ausrichtung bestimmter Formen (z.B. "z" bei scheduler).
 - `moduleRef (string, optional)`: Pflicht fuer `type: "module"`; referenziert einen Eintrag in root `modules`.
-- `moduleParams (object, optional)`: Parent-seitige Runtime-Parameter fuer den Modulaufruf.
+- Runtime-Parameter fuer den Modulaufruf werden an der aufrufenden Connection konfiguriert (siehe Abschnitt 6.2).
 
 ---
 # 5. Komponententypen im Beispielmodell
@@ -249,10 +249,6 @@ Beispiel:
   "label": "Modul:\nRegistrierung",
   "type": "module",
   "moduleRef": "M_REGISTRATION",
-  "moduleParams": {
-    "tenant": "bkv-de",
-    "channel": "portal"
-  },
   "x": 3,
   "y": 0,
   "width": 2.2,
@@ -293,10 +289,39 @@ Der Root-Bereich `modules` definiert wiederverwendbare Child-Modelle und deren D
 Fuer einen Modulaufruf werden effektive Runtime-Parameter in dieser Reihenfolge zusammengefuehrt:
 1. geerbte Parent-Runtime-Parameter
 2. Modul-Defaults (`modules[].parameters`)
-3. Parent-Overrides (`moduleParams` oder `parameters`)
+3. Modulaufruf-Overrides an der ausgewaehlten Connection (`moduleCallParams` oder `moduleParams`)
 
 Template-Platzhalter im Child-JSON werden ueber `{{paramName}}` aufgeloest.
 Aufgeloeste Runtime-Werte stehen unter `settings.moduleRuntime.params` zur Verfuegung.
+
+---
+
+## 6.2 Modulaufruf-Attribute an Connections
+
+Wenn eine Modul-Komponente mehrere moegliche Aufrufe hat, zeigt der Viewer beim Doppelklick ein Auswahl-Popup.
+Es werden nur aktuell sichtbare Connections beruecksichtigt (Filterung ueber ConnectionGroups gilt).
+
+Nutze diese optionalen Connection-Attribute:
+
+- `labelModuleCall (string)`: Anzeige-Label fuer die Auswahl im Modulaufruf-Popup.
+- `moduleCallParams (object)`: aufrufspezifische Runtime-Parameter fuer den Modulaufruf.
+
+Beispiel:
+
+```json
+{
+  "id": "PARENT-2",
+  "from": "ORCH1",
+  "to": "MOD_REG",
+  "label": "Delegate to module",
+  "labelModuleCall": "Portal registration",
+  "moduleCallParams": {
+    "tenant": "bkv-de",
+    "channel": "portal",
+    "apiProtocol": "HTTPS/REST"
+  }
+}
+```
 
 ---
 # 6. Verbindungen: connectionGroups und connections
