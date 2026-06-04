@@ -737,18 +737,24 @@ function selectModuleCallForComponent(component, callOptions) {
  * Updates module navigation controls in view panel.
  */
 function updateModuleNavigationUI() {
+    const container = document.getElementById('module-nav-bottom');
     const btnBack = document.getElementById('btn-module-back');
     const status = document.getElementById('module-nav-status');
+    const inModule = moduleNavigationState.stack.length > 0;
+
+    if (container) {
+        container.style.display = inModule ? 'inline-flex' : 'none';
+    }
 
     if (btnBack) {
-        btnBack.disabled = moduleNavigationState.stack.length === 0 || moduleNavigationState.isNavigating;
+        btnBack.disabled = !inModule || moduleNavigationState.isNavigating;
     }
 
     if (status) {
         const labels = moduleNavigationState.stack.map(entry => entry.label).filter(Boolean);
         status.textContent = labels.length > 0
-            ? `Context: root > ${labels.join(' > ')}`
-            : 'Context: root';
+            ? `root > module ${labels[labels.length - 1]}`
+            : '';
     }
 }
 
@@ -756,23 +762,24 @@ function updateModuleNavigationUI() {
  * Ensures module navigation controls exist in view panel.
  */
 function ensureModuleNavigationControls() {
-    const viewPanel = document.getElementById('view-panel');
-    if (!viewPanel) {
+    const host = document.getElementById('moduleNavBottomHost');
+    if (!host) {
         return;
     }
 
-    if (document.getElementById('module-nav-controls')) {
+    if (document.getElementById('module-nav-bottom')) {
         updateModuleNavigationUI();
         return;
     }
 
     const controls = document.createElement('div');
-    controls.id = 'module-nav-controls';
-    controls.className = 'view-panel-module-controls';
+    controls.id = 'module-nav-bottom';
+    controls.className = 'module-nav-bottom';
+    controls.style.display = 'none';
 
     const backBtn = document.createElement('button');
     backBtn.id = 'btn-module-back';
-    backBtn.className = 'view-panel-button';
+    backBtn.className = 'module-nav-bottom-btn';
     backBtn.textContent = 'Back module';
     backBtn.addEventListener('click', () => {
         returnToParentModuleContext();
@@ -780,11 +787,11 @@ function ensureModuleNavigationControls() {
 
     const status = document.createElement('span');
     status.id = 'module-nav-status';
-    status.className = 'view-panel-status';
+    status.className = 'module-nav-bottom-status';
 
     controls.appendChild(backBtn);
     controls.appendChild(status);
-    viewPanel.appendChild(controls);
+    host.appendChild(controls);
 
     updateModuleNavigationUI();
 }
@@ -969,7 +976,6 @@ function onModuleNavigationKeyDown(event) {
     if (event.defaultPrevented) {
         return;
     }
-    const callLabel = getConnectionModuleCallLabel(callSelection?.connection) || callSelection?.connection?.label || callSelection?.connection?.id || null;
 
     if (moduleNavigationState.stack.length === 0 || moduleNavigationState.isNavigating) {
         return;

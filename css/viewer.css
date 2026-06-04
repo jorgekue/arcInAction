@@ -86,6 +86,43 @@ body {
     background: rgba(255, 255, 255, 0.1);
 }
 
+#moduleNavBottomHost {
+    position: absolute;
+    left: 96px;
+    bottom: 10px;
+    z-index: 30;
+}
+
+.module-nav-bottom {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border: 1px solid #666;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.module-nav-bottom-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid #666;
+    padding: 2px 6px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.module-nav-bottom-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.module-nav-bottom-status {
+    color: #ddd;
+    white-space: nowrap;
+}
+
 #modelListPanel {
     position: absolute;
     left: 10px;
@@ -345,12 +382,6 @@ body {
 }
 
 .view-panel-dev-controls {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.view-panel-module-controls {
     display: inline-flex;
     align-items: center;
     gap: 6px;
