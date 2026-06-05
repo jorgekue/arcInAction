@@ -240,6 +240,174 @@ function resolvePathFromCurrentModel(targetPath) {
 }
 
 /**
+ * Returns whether a visibility flag is enabled.
+ * Missing flags default to true; only explicit false disables visibility.
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+function isVisibleFlagEnabled(value) {
+    return value !== false;
+}
+
+/**
+ * Returns effective visibility for a layer entity.
+ * @param {Object|null|undefined} layer
+ * @returns {boolean}
+ */
+function isLayerVisible(layer) {
+    return isVisibleFlagEnabled(layer?.visible);
+}
+
+/**
+ * Returns effective visibility for a component entity.
+ * @param {Object|null|undefined} component
+ * @returns {boolean}
+ */
+function isComponentVisible(component) {
+    return isVisibleFlagEnabled(component?.visible);
+}
+
+/**
+ * Returns effective visibility for a connection group entity.
+ * @param {Object|null|undefined} group
+ * @returns {boolean}
+ */
+function isGroupVisible(group) {
+    return isVisibleFlagEnabled(group?.visible);
+}
+
+/**
+ * Returns effective interactive active state for a connection group entity.
+ * @param {Object|null|undefined} group
+ * @returns {boolean}
+ */
+function isGroupActive(group) {
+    return group?.active !== false;
+}
+
+/**
+ * Returns effective visibility for a connection entity.
+ * @param {Object|null|undefined} connection
+ * @returns {boolean}
+ */
+function isConnectionVisible(connection) {
+    return isVisibleFlagEnabled(connection?.visible);
+}
+
+/**
+ * Ensures visibility flags exist on loaded model objects.
+ * Missing flags are normalized to true for consistent runtime behavior.
+ * @param {Object} model
+ * @returns {Object}
+ */
+function normalizeModelVisibilityFlags(model) {
+    if (!model || typeof model !== 'object') {
+        return model;
+    }
+
+    if (Array.isArray(model.layers)) {
+        model.layers.forEach(layer => {
+            if (!layer || typeof layer !== 'object') {
+                return;
+            }
+
+            if (layer.visible === undefined) {
+                layer.visible = true;
+            }
+
+            if (!Array.isArray(layer.components)) {
+                return;
+            }
+
+            layer.components.forEach(component => {
+                if (!component || typeof component !== 'object') {
+                    return;
+                }
+                if (component.visible === undefined) {
+                    component.visible = true;
+                }
+            });
+        });
+    }
+
+    if (Array.isArray(model.connectionGroups)) {
+        model.connectionGroups.forEach(group => {
+            if (!group || typeof group !== 'object') {
+                return;
+            }
+
+            if (group.visible === undefined) {
+                group.visible = true;
+            }
+
+            if (group.active === undefined) {
+                group.active = true;
+            }
+
+            if (!Array.isArray(group.connections)) {
+                return;
+            }
+
+            group.connections.forEach(connection => {
+                if (!connection || typeof connection !== 'object') {
+                    return;
+                }
+                if (connection.visible === undefined) {
+                    connection.visible = true;
+                }
+            });
+        });
+    }
+
+    if (Array.isArray(model.connections)) {
+        model.connections.forEach(connection => {
+            if (!connection || typeof connection !== 'object') {
+                return;
+            }
+            if (connection.visible === undefined) {
+                connection.visible = true;
+            }
+        });
+    }
+
+    return model;
+}
+
+/**
+ * Returns component baseline visibility derived from layer/component flags.
+ * @param {{data?: Object, layerVisible?: boolean}|null|undefined} entry
+ * @returns {boolean}
+ */
+function isComponentEntryVisibleByFlags(entry) {
+    if (!entry) {
+        return true;
+    }
+
+    const layerVisible = isVisibleFlagEnabled(entry.layerVisible);
+    const componentVisible = isComponentVisible(entry.data);
+    return layerVisible && componentVisible;
+}
+
+/**
+ * Returns baseline component visibility for a component ID.
+ * Missing component IDs are treated as visible to keep fallback behavior stable.
+ * @param {string|null|undefined} componentId
+ * @returns {boolean}
+ */
+function isComponentIdVisibleByFlags(componentId) {
+    if (!componentId) {
+        return true;
+    }
+
+    const entry = componentMeshes.get(componentId);
+    if (!entry) {
+        return true;
+    }
+
+    return isComponentEntryVisibleByFlags(entry);
+}
+
+/**
  * Creates a JSON-safe deep clone of a model object.
  * @param {Object} model
  * @returns {Object|null}
@@ -1126,6 +1294,10 @@ function addLayerLabels(model) {
     const x = -18;          // Offset to the left of center
 
     layers.forEach(layer => {
+        if (!isLayerVisible(layer)) {
+            return;
+        }
+
         const z = layer.z || 0;
         const name = layer.name || `Layer ${z}`;
 
@@ -1335,7 +1507,8 @@ function recordDeveloperHistory(beforeSnapshot, afterSnapshot, beforeSelection =
 }
 
 /**
- * Captures current active state of connection groups.
+ * Captures current interactive active state of connection groups.
+ * Note: general visibility is controlled by group.visible and is not part of this snapshot.
  * @returns {{byOrderName: Map<string, boolean>, byName: Map<string, boolean>}}
  */
 function captureConnectionGroupSelectionState() {
@@ -1345,7 +1518,7 @@ function captureConnectionGroupSelectionState() {
     connectionGroups.forEach((group, index) => {
         const orderValue = group.order != null ? group.order : index;
         const nameValue = group.name || `Group ${index + 1}`;
-        const activeValue = group.active !== false;
+        const activeValue = isGroupActive(group);
 
         byOrderName.set(`${orderValue}|${nameValue}`, activeValue);
         if (!byName.has(nameValue)) {
@@ -1357,7 +1530,8 @@ function captureConnectionGroupSelectionState() {
 }
 
 /**
- * Restores active state of connection groups from a snapshot.
+ * Restores interactive active state of connection groups from a snapshot.
+ * Visibility is still governed by group.visible and defaults.
  * @param {{byOrderName: Map<string, boolean>, byName: Map<string, boolean>}|null} snapshot
  */
 function restoreConnectionGroupSelectionState(snapshot) {
@@ -2737,6 +2911,7 @@ function createComponents(model) {
     const layers = model.layers || [];
 
     layers.forEach(layer => {
+        const layerVisible = isLayerVisible(layer);
         const z = layer.z || 0;
         (layer.components || []).forEach(c => {
             let radius;
@@ -3030,8 +3205,11 @@ function createComponents(model) {
                 data: c,
                 width,
                 height,
-                depth
+                depth,
+                layerVisible
             };
+
+            mesh.visible = layerVisible && isComponentVisible(c);
 
             scene.add(mesh);
 
@@ -3086,7 +3264,7 @@ function createComponents(model) {
             mesh.updateMatrixWorld();
             mesh.getWorldPosition(center);
             componentCenters.set(c.id, center);
-            componentMeshes.set(c.id, { mesh, data: c });
+            componentMeshes.set(c.id, { mesh, data: c, layerVisible });
 
         });
     });
@@ -3383,15 +3561,16 @@ function createConnections(model) {
  * Updates visibility of connections based on active/inactive connection groups.
  */
 function updateConnectionVisibilityFromGroups() {
-    if (!Array.isArray(connectionGroups) || connectionGroups.length === 0) {
-        return;
+    const groupStateMap = new Map();
+    if (Array.isArray(connectionGroups)) {
+        connectionGroups.forEach(g => {
+            const groupName = g?.name || 'Group';
+            groupStateMap.set(groupName, {
+                visible: isGroupVisible(g),
+                active: isGroupActive(g)
+            });
+        });
     }
-
-    // Map for quick access: groupName -> active
-    const activeMap = new Map();
-    connectionGroups.forEach(g => {
-        activeMap.set(g.name || 'Group', !!g.active);
-    });
 
     scene.traverse(obj => {
         if (!obj.userData) return;
@@ -3399,10 +3578,13 @@ function updateConnectionVisibilityFromGroups() {
         const ud = obj.userData;
         if (ud.type === 'connection' || ud.type === 'connectionArrow') {
             const groupName = ud.groupName || 'Group';
-            const isActive = activeMap.get(groupName);
+            const groupState = groupStateMap.get(groupName) || { visible: true, active: true };
+            const connectionVisible = isConnectionVisible(ud.connection);
+            const endpointsVisible =
+                isComponentIdVisibleByFlags(ud.connection?.from) &&
+                isComponentIdVisibleByFlags(ud.connection?.to);
 
-            // Falls Gruppe nicht bekannt (z.B. Fallback), default = true
-            obj.visible = (isActive === undefined) ? true : isActive;
+            obj.visible = groupState.visible && groupState.active && connectionVisible && endpointsVisible;
         }
     });
 
@@ -3421,9 +3603,10 @@ function updateComponentVisibilityFromGroups() {
     }
 
     if (!modelVisualSettings.selectConnectionsAndComponents) {
-        componentMeshes.forEach(({ mesh }) => {
+        componentMeshes.forEach(entry => {
+            const mesh = entry?.mesh;
             if (mesh) {
-                mesh.visible = true;
+                mesh.visible = isComponentEntryVisibleByFlags(entry);
             }
         });
         return;
@@ -3432,9 +3615,12 @@ function updateComponentVisibilityFromGroups() {
     const visibleComponentIds = new Set();
 
     connectionGroups
-        .filter(group => group && group.active)
+        .filter(group => group && isGroupVisible(group) && isGroupActive(group))
         .forEach(group => {
             (group.connections || []).forEach(conn => {
+                if (!isConnectionVisible(conn)) {
+                    return;
+                }
                 if (conn?.from) visibleComponentIds.add(conn.from);
                 if (conn?.to) visibleComponentIds.add(conn.to);
             });
@@ -3442,7 +3628,7 @@ function updateComponentVisibilityFromGroups() {
 
     componentMeshes.forEach((entry, componentId) => {
         if (!entry?.mesh) return;
-        entry.mesh.visible = visibleComponentIds.has(componentId);
+        entry.mesh.visible = isComponentEntryVisibleByFlags(entry) && visibleComponentIds.has(componentId);
     });
 }
 
@@ -3548,7 +3734,7 @@ function rebuildConnectionSequence() {
 
     // 1. aktive Gruppen nach order sortieren
     const activeGroups = connectionGroups
-        .filter(g => g.active)
+        .filter(g => isGroupVisible(g) && isGroupActive(g))
         .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     if (activeGroups.length === 0) {
@@ -3576,6 +3762,10 @@ function rebuildConnectionSequence() {
         });
 
         conns.forEach(conn => {
+            if (!isConnectionVisible(conn)) {
+                return;
+            }
+
             const line = allConnectionLines.find(lineObj => {
                 const c = lineObj.userData && lineObj.userData.connection;
                 if (!c) return false;
@@ -3787,7 +3977,7 @@ function startDataFlowOnConnection(connObject, options = {}) {
  */
 function loadModelFromObject(model) {
     clearScene();
-    modelData = model;
+    modelData = normalizeModelVisibilityFlags(model);
     clearDeveloperSelection();
     updateDeveloperModeUI();
 
@@ -3795,14 +3985,14 @@ function loadModelFromObject(model) {
         resetDeveloperHistory();
     }
 
-    applyFlowTimingSettingsFromModel(model);
-    validateModelModuleReferences(model);
+    applyFlowTimingSettingsFromModel(modelData);
+    validateModelModuleReferences(modelData);
     syncViewPanelStateFromSettings();
-    addLayerLabels(model);
-    createComponents(model);
+    addLayerLabels(modelData);
+    createComponents(modelData);
     // Get connectionGroups from model
-    setupConnectionGroupsFromModel(model);
-    createConnections(model);
+    setupConnectionGroupsFromModel(modelData);
+    createConnections(modelData);
 }
 
 /**
@@ -3819,7 +4009,8 @@ function setupConnectionGroupsFromModel(model) {
             name: g.name || `Group ${index + 1}`,
             order: g.order != null ? g.order : index,
             color: g.color || defaultConnectionColor,
-            active: g.active !== false, // Default: true
+            visible: isGroupVisible(g),
+            active: isGroupActive(g), // interactive toggle; subordinate to visible
             connections: Array.isArray(g.connections) ? g.connections : []
         }));
     } else {
@@ -3828,6 +4019,7 @@ function setupConnectionGroupsFromModel(model) {
         connectionGroups = [{
             name: 'All Connections',
             order: 0,
+            visible: true,
             active: true,
             connections: flatConnections
         }];
@@ -4697,7 +4889,7 @@ function updateBusinessGroupsMasterCheckboxState(checkbox, businessGroups) {
     }
 
     checkbox.disabled = false;
-    const activeCount = businessGroups.filter(group => group.active !== false).length;
+    const activeCount = businessGroups.filter(group => isGroupActive(group)).length;
 
     checkbox.checked = activeCount === businessGroups.length;
     checkbox.indeterminate = activeCount > 0 && activeCount < businessGroups.length;
@@ -4722,7 +4914,7 @@ function buildConnectionGroupsUI() {
     const groupsScrollList = document.createElement('div');
     groupsScrollList.className = 'connection-groups-scroll-list';
 
-    const businessGroups = connectionGroups.filter(isBusinessConnectionGroup);
+    const businessGroups = connectionGroups.filter(group => isBusinessConnectionGroup(group) && isGroupVisible(group));
 
     const masterRow = document.createElement('div');
     masterRow.className = 'connection-group-row connection-group-row-master';
@@ -4798,7 +4990,8 @@ function buildConnectionGroupsUI() {
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.checked = group.active;
+        checkbox.checked = isGroupActive(group);
+        checkbox.disabled = !isGroupVisible(group);
 
         checkbox.addEventListener('change', () => {
             group.active = checkbox.checked;
