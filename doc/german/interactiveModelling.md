@@ -49,6 +49,11 @@ Voraussetzung:
 
 - Escape drücken.
 
+### 6. Tastatur im Modul-Kontext
+
+- Mit selektierter Connection behalten `Escape`, `Backspace` und `Delete` ihre Edit-Bedeutung.
+- Ohne selektierte Connection erfolgt der Rücksprung in Parent/Root über `Backspace` oder `Escape` (alternativ `Back module`).
+
 ## Undo / Redo
 
 - Ctrl+Z: Undo

@@ -107,13 +107,15 @@ Standard‑Attribute einer Komponente:
 - `id (string, Pflicht)`: Eindeutige ID. Wird von Verbindungen (from, to) referenziert.
 - `label (string)`: Text auf dem 3D‑Objekt. Zeilenumbruch mit \n, z.B. "User\nService".
 - `type (string)`: Steuert 3D‑Darstellung und Style:
-        Zur Auswahl: `"actor", "frontend", "service", "database", "queue", "scheduler"`.
+  Zur Auswahl: `"actor", "frontend", "service", "database", "queue", "scheduler", "module"`.
 - `x, y (number)`: Position auf dem Layer in der X/Y‑Ebene.
 - `width, height, depth (number)`: Abmessungen des 3D‑Objekts (Interpretation abhängig von type).
 
 Spezielle Attribute für manche Typen:
 
 - `orientation (string, optional)`: Ausrichtung bestimmter Formen (z.B. "z" bei scheduler).
+- `moduleRef (string, optional)`: Pflicht für `type: "module"`; referenziert einen Eintrag in root `modules`.
+- Runtime-Parameter für den Modulaufruf werden an der aufrufenden Connection konfiguriert (siehe Abschnitt 6.2).
 
 ---
 # 5. Komponententypen im Beispielmodell
@@ -236,6 +238,85 @@ Beispiel:
 - Darstellung: DB‑Symbol (stehender Zylinder).
 - label auf jeder runder Stirnseite (oben/unten).
 - Farbe: typeStyles.database.color (im Beispiel: #e15759).
+
+## 5.6 Module: type = "module"
+
+Beispiel:
+
+```json
+{
+  "id": "MOD_REG",
+  "label": "Modul:\nRegistrierung",
+  "type": "module",
+  "moduleRef": "M_REGISTRATION",
+  "x": 3,
+  "y": 0,
+  "width": 2.2,
+  "height": 1.1,
+  "depth": 1
+}
+```
+
+- Darstellung: service-ähnliche Box mit expliziter Modulkennzeichnung im Viewer.
+
+---
+
+## 5.7 Root-Bereich modules
+
+Der Root-Bereich `modules` definiert wiederverwendbare Child-Modelle.
+
+```json
+{
+  "modules": [
+    {
+      "id": "M_REGISTRATION",
+      "name": "Registration Module",
+      "file": "modules/registration-module.json"
+    }
+  ]
+}
+```
+
+### Reihenfolge der Parameterauflösung
+
+Für einen Modulaufruf werden effektive Runtime-Parameter in dieser Reihenfolge zusammengeführt:
+1. geerbte Parent-Runtime-Parameter
+2. Child-Modell-Defaults (`parameters`-Block im referenzierten Modul-JSON)
+3. Modulaufruf-Overrides an der ausgewählten Connection (`parameters`)
+
+Default-Parameter an Moduldefinitionen (`modules[].parameters`) und an Modul-Komponenten werden nicht mehr unterstützt.
+
+Template-Platzhalter im Child-JSON werden über `{{paramName}}` aufgelöst.
+Aufgelöste Runtime-Werte stehen unter `settings.moduleRuntime.params` zur Verfügung.
+
+---
+
+## 6.2 Modulaufruf-Attribute an Connections
+
+Wenn eine Modul-Komponente mehrere mögliche Aufrufe hat, zeigt der Viewer beim Doppelklick ein Auswahl-Popup.
+Es werden nur aktuell sichtbare Connections berücksichtigt (Filterung über ConnectionGroups gilt).
+
+Nutze diese optionalen Connection-Attribute:
+
+- `labelModuleCall (string)`: Anzeige-Label für die Auswahl im Modulaufruf-Popup.
+- `parameters (object)`: aufrufspezifische Runtime-Parameter für den Modulaufruf.
+
+Beispiel:
+
+```json
+{
+  "id": "PARENT-2",
+  "from": "ORCH1",
+  "to": "MOD_REG",
+  "label": "Delegate to module",
+  "labelModuleCall": "Portal registration",
+  "parameters": {
+    "tenant": "bkv-de",
+    "channel": "portal",
+    "apiProtocol": "HTTPS/REST"
+  }
+}
+```
 
 ---
 # 6. Verbindungen: connectionGroups und connections

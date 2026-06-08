@@ -51,6 +51,10 @@ Connections represent communication relationships between components and also se
 
 For larger models, connections are organized into groups. This makes it possible to focus on selected groups and explain complex diagrams step by step instead of showing everything at once.
 
+## Drill-down in Modules
+
+With module support, reusable architecture parts can be encapsulated as dedicated models and referenced from a parent model via connections. This can be done repeatedly, from the same parent model or across different parent models. As a result, recurring logic no longer needs to be modeled and maintained multiple times. For this purpose, modules are parameterizable, and parameters are injected per call through the invoking connection. In the viewer, users can enter a module directly via double-click.
+
 ## Reducing Modeling Complexity with AI Support
 
 As architectures grow, the effort required to maintain consistent aia models manually in JSON also increases. AI tools can help reduce modeling complexity significantly without sacrificing domain quality.

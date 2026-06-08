@@ -107,13 +107,15 @@ Standard attributes of a component:
 - `id (string, required)`: Unique ID. Referenced by connections (from, to).
 - `label (string)`: Text on the 3D object. Line break with \n, e.g., "User\nService".
 - `type (string)`: Controls 3D representation and style:
-        Options: `"actor", "frontend", "service", "database", "queue", "scheduler"`.
+  Options: `"actor", "frontend", "service", "database", "queue", "scheduler", "module"`.
 - `x, y (number)`: Position on the layer in the X/Y plane.
 - `width, height, depth (number)`: Dimensions of the 3D object (interpretation depends on type).
 
 Special attributes for some types:
 
 - `orientation (string, optional)`: Orientation of certain shapes (e.g., "z" for scheduler).
+- `moduleRef (string, optional)`: Required for `type: "module"`; references an entry in root `modules`.
+- Runtime module call parameters are configured on the invoking connection (see section 6.2).
 
 ---
 # 5. Component Types in the Example Model
@@ -236,6 +238,88 @@ Example:
 - Representation: DB symbol (standing cylinder).
 - label on each round end face (top/bottom).
 - Color: typeStyles.database.color (in example: #e15759).
+
+## 5.6 Modules: type = "module"
+
+Example:
+
+```json
+{
+  "id": "MOD_REG",
+  "label": "Module:\nRegistration",
+  "type": "module",
+  "moduleRef": "M_REGISTRATION",
+  "x": 3,
+  "y": 0,
+  "width": 2.2,
+  "height": 1.1,
+  "depth": 1
+}
+```
+
+- Representation: service-like box with explicit module marker in viewer.
+- Interaction: double-click enters referenced module model (drill-down).
+- Return navigation: `Back module` button in view panel, or `Backspace`/`Escape` when no connection is selected.
+- Edit-mode note: with a selected connection, `Escape`, `Backspace`, and `Delete` keep their edit behavior.
+
+---
+
+## 5.7 Root modules section
+
+The root-level `modules` section defines reusable child models.
+
+```json
+{
+  "modules": [
+    {
+      "id": "M_REGISTRATION",
+      "name": "Registration Module",
+      "file": "modules/registration-module.json"
+    }
+  ]
+}
+```
+
+### Parameter resolution order
+
+For a module invocation, effective runtime parameters are merged in this order:
+1. inherited parent runtime parameters
+2. child model defaults (`parameters` block in the referenced module JSON)
+3. module call overrides on the selected connection (`parameters`)
+
+Default parameters on module definitions (`modules[].parameters`) and on module components are no longer supported.
+
+Template placeholders in child model JSON are resolved via `{{paramName}}`.
+Resolved runtime values are available in `settings.moduleRuntime.params`.
+
+---
+
+## 6.2 Module call attributes on connections
+
+For module components with multiple possible calls, the viewer opens a selection popup on double-click.
+Only currently visible connections are considered (connection group filtering is respected).
+
+Use these optional connection attributes:
+
+- `labelModuleCall (string)`: dedicated display label in the module-call selection popup.
+- `parameters (object)`: call-specific runtime parameter overrides for module invocation.
+
+Example:
+
+```json
+{
+  "id": "PARENT-2",
+  "from": "ORCH1",
+  "to": "MOD_REG",
+  "label": "Delegate to module",
+  "labelModuleCall": "Portal registration",
+  "parameters": {
+    "tenant": "bkv-de",
+    "channel": "portal",
+    "apiProtocol": "HTTPS/REST"
+  }
+}
+```
 
 ---
 # 6. Connections: connectionGroups and connections

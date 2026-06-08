@@ -83,7 +83,8 @@ const developerEditHistory = {
  */
 const defaultModelFiles = [
     { name: 'Standard model', file: 'model.json' },
-    { name: 'Simple model', file: 'simple-model.json' }
+    { name: 'Simple model', file: 'simple-model.json' },
+    { name: 'Module Print', file: 'modulePrint.json' }
 ];
 
 /** @type {Array<{name: string, file: string}>} Full list of available models (default + external) */
@@ -91,6 +92,24 @@ const modelFiles = [...defaultModelFiles];
 
 /** @type {string} Currently loaded model file name */
 let currentModelFile = 'model.json';
+
+/** @type {{stack: Array<{model: Object, modelFile: string, groupSelection: {byOrderName: Map<string, boolean>, byName: Map<string, boolean>}|null, currentConnectionIndex: number, currentSelectedConnectionIndex: number, cameraPosition: THREE.Vector3, cameraTarget: THREE.Vector3, label: string}>, isNavigating: boolean}} Module drill-down navigation state */
+const moduleNavigationState = {
+    stack: [],
+    isNavigating: false
+};
+
+/** @type {{isOpen: boolean, resolve: ((value: Object|null) => void)|null}} Runtime state for module call selection dialog */
+const moduleCallDialogState = {
+    isOpen: false,
+    resolve: null
+};
+
+/** @type {THREE.Raycaster} Raycaster for module drill-down interaction */
+const moduleRaycaster = new THREE.Raycaster();
+
+/** @type {THREE.Vector2} Pointer coordinates for module drill-down interaction */
+const modulePointerNdc = new THREE.Vector2();
 
 
 /**
@@ -164,13 +183,986 @@ function parseModelFilesFromProperties(propertiesText) {
 }
 
 /**
+ * Returns true when a path is an absolute URL or absolute web path.
+ * @param {string} path
+ * @returns {boolean}
+ */
+function isAbsolutePathLike(path) {
+    return /^[a-z]+:\/\//i.test(path) || String(path).startsWith('/');
+}
+
+/**
+ * Normalizes a relative path by resolving '.' and '..' segments.
+ * @param {string} path
+ * @returns {string}
+ */
+function normalizeRelativePath(path) {
+    const parts = String(path).split('/');
+    const normalized = [];
+
+    parts.forEach(part => {
+        if (!part || part === '.') {
+            return;
+        }
+
+        if (part === '..') {
+            if (normalized.length > 0) {
+                normalized.pop();
+            }
+            return;
+        }
+
+        normalized.push(part);
+    });
+
+    return normalized.join('/');
+}
+
+/**
+ * Resolves a target file path relative to the currently loaded model file.
+ * @param {string} targetPath
+ * @returns {string}
+ */
+function resolvePathFromCurrentModel(targetPath) {
+    const rawTarget = String(targetPath || '').trim();
+    if (!rawTarget) {
+        return '';
+    }
+
+    if (isAbsolutePathLike(rawTarget)) {
+        return rawTarget;
+    }
+
+    const sourceFile = String(currentModelFile || '').trim();
+    const lastSlash = sourceFile.lastIndexOf('/');
+    const basePath = lastSlash >= 0 ? sourceFile.slice(0, lastSlash + 1) : '';
+
+    return normalizeRelativePath(`${basePath}${rawTarget}`);
+}
+
+/**
+ * Returns whether a visibility flag is enabled.
+ * Missing flags default to true; only explicit false disables visibility.
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+function isVisibleFlagEnabled(value) {
+    return value !== false;
+}
+
+/**
+ * Returns effective visibility for a layer entity.
+ * @param {Object|null|undefined} layer
+ * @returns {boolean}
+ */
+function isLayerVisible(layer) {
+    return isVisibleFlagEnabled(layer?.visible);
+}
+
+/**
+ * Returns effective visibility for a component entity.
+ * @param {Object|null|undefined} component
+ * @returns {boolean}
+ */
+function isComponentVisible(component) {
+    return isVisibleFlagEnabled(component?.visible);
+}
+
+/**
+ * Returns effective visibility for a connection group entity.
+ * @param {Object|null|undefined} group
+ * @returns {boolean}
+ */
+function isGroupVisible(group) {
+    return isVisibleFlagEnabled(group?.visible);
+}
+
+/**
+ * Returns effective interactive active state for a connection group entity.
+ * @param {Object|null|undefined} group
+ * @returns {boolean}
+ */
+function isGroupActive(group) {
+    return group?.active !== false;
+}
+
+/**
+ * Returns effective visibility for a connection entity.
+ * @param {Object|null|undefined} connection
+ * @returns {boolean}
+ */
+function isConnectionVisible(connection) {
+    return isVisibleFlagEnabled(connection?.visible);
+}
+
+/**
+ * Ensures visibility flags exist on loaded model objects.
+ * Missing flags are normalized to true for consistent runtime behavior.
+ * @param {Object} model
+ * @returns {Object}
+ */
+function normalizeModelVisibilityFlags(model) {
+    if (!model || typeof model !== 'object') {
+        return model;
+    }
+
+    if (Array.isArray(model.layers)) {
+        model.layers.forEach(layer => {
+            if (!layer || typeof layer !== 'object') {
+                return;
+            }
+
+            if (layer.visible === undefined) {
+                layer.visible = true;
+            }
+
+            if (!Array.isArray(layer.components)) {
+                return;
+            }
+
+            layer.components.forEach(component => {
+                if (!component || typeof component !== 'object') {
+                    return;
+                }
+                if (component.visible === undefined) {
+                    component.visible = true;
+                }
+            });
+        });
+    }
+
+    if (Array.isArray(model.connectionGroups)) {
+        model.connectionGroups.forEach(group => {
+            if (!group || typeof group !== 'object') {
+                return;
+            }
+
+            if (group.visible === undefined) {
+                group.visible = true;
+            }
+
+            if (group.active === undefined) {
+                group.active = true;
+            }
+
+            if (!Array.isArray(group.connections)) {
+                return;
+            }
+
+            group.connections.forEach(connection => {
+                if (!connection || typeof connection !== 'object') {
+                    return;
+                }
+                if (connection.visible === undefined) {
+                    connection.visible = true;
+                }
+            });
+        });
+    }
+
+    if (Array.isArray(model.connections)) {
+        model.connections.forEach(connection => {
+            if (!connection || typeof connection !== 'object') {
+                return;
+            }
+            if (connection.visible === undefined) {
+                connection.visible = true;
+            }
+        });
+    }
+
+    return model;
+}
+
+/**
+ * Returns component baseline visibility derived from layer/component flags.
+ * @param {{data?: Object, layerVisible?: boolean}|null|undefined} entry
+ * @returns {boolean}
+ */
+function isComponentEntryVisibleByFlags(entry) {
+    if (!entry) {
+        return true;
+    }
+
+    const layerVisible = isVisibleFlagEnabled(entry.layerVisible);
+    const componentVisible = isComponentVisible(entry.data);
+    return layerVisible && componentVisible;
+}
+
+/**
+ * Returns baseline component visibility for a component ID.
+ * Missing component IDs are treated as visible to keep fallback behavior stable.
+ * @param {string|null|undefined} componentId
+ * @returns {boolean}
+ */
+function isComponentIdVisibleByFlags(componentId) {
+    if (!componentId) {
+        return true;
+    }
+
+    const entry = componentMeshes.get(componentId);
+    if (!entry) {
+        return true;
+    }
+
+    return isComponentEntryVisibleByFlags(entry);
+}
+
+/**
+ * Creates a JSON-safe deep clone of a model object.
+ * @param {Object} model
+ * @returns {Object|null}
+ */
+function cloneModelForNavigation(model) {
+    try {
+        return JSON.parse(JSON.stringify(model));
+    } catch (err) {
+        console.warn('Could not clone model for module navigation context.', err);
+        return null;
+    }
+}
+
+/**
+ * Finds module definition by component.moduleRef in current model.
+ * @param {Object} component
+ * @returns {Object|null}
+ */
+function getModuleDefinitionForComponent(component) {
+    const moduleRef = typeof component?.moduleRef === 'string' ? component.moduleRef.trim() : '';
+    if (!moduleRef) {
+        return null;
+    }
+
+    const modules = Array.isArray(modelData?.modules) ? modelData.modules : [];
+    const moduleDef = modules.find(entry => String(entry?.id || '').trim() === moduleRef);
+    return moduleDef || null;
+}
+
+/**
+ * Returns true when value is a non-array object.
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+function isPlainObject(value) {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Returns currently active module runtime parameters from model settings.
+ * @returns {Object<string, unknown>}
+ */
+function getCurrentModuleRuntimeParameters() {
+    const params = modelData?.settings?.moduleRuntime?.params;
+    return isPlainObject(params) ? { ...params } : {};
+}
+
+/**
+ * Resolves a template string using runtime parameters.
+ * Supported format: {{paramName}}
+ * @param {string} text
+ * @param {Object<string, unknown>} params
+ * @returns {unknown}
+ */
+function resolveTemplateString(text, params) {
+    const exactToken = String(text).match(/^\{\{\s*([\w.-]+)\s*\}\}$/);
+    if (exactToken) {
+        const key = exactToken[1];
+        return Object.prototype.hasOwnProperty.call(params, key) ? params[key] : text;
+    }
+
+    return String(text).replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (match, key) => {
+        if (!Object.prototype.hasOwnProperty.call(params, key)) {
+            return match;
+        }
+
+        const value = params[key];
+        return value == null ? '' : String(value);
+    });
+}
+
+/**
+ * Deep-resolves template tokens in object/array/string values.
+ * @param {unknown} value
+ * @param {Object<string, unknown>} params
+ * @returns {unknown}
+ */
+function resolveTemplateValues(value, params) {
+    if (typeof value === 'string') {
+        return resolveTemplateString(value, params);
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(item => resolveTemplateValues(item, params));
+    }
+
+    if (isPlainObject(value)) {
+        const result = {};
+        Object.entries(value).forEach(([key, nestedValue]) => {
+            result[key] = resolveTemplateValues(nestedValue, params);
+        });
+        return result;
+    }
+
+    return value;
+}
+
+/**
+ * Extracts top-level model default parameters from model.parameters.
+ * @param {Object|null|undefined} model
+ * @returns {Object<string, unknown>}
+ */
+function extractModelDefaultParameters(model) {
+    const parameters = model?.parameters;
+    if (isPlainObject(parameters)) {
+        return { ...parameters };
+    }
+    return {};
+}
+
+/**
+ * Resolves full model payload using top-level model defaults and runtime overrides.
+ * Merge order: model.parameters defaults -> runtime parameter overrides.
+ * @param {Object} model
+ * @param {Object<string, unknown>} [runtimeParams]
+ * @returns {Object<string, unknown>}
+ */
+function resolveModelParameters(model, runtimeParams = {}) {
+    if (!isPlainObject(model)) {
+        return model;
+    }
+
+    const defaultsRaw = extractModelDefaultParameters(model);
+    const defaultsResolved = resolveTemplateValues(defaultsRaw, runtimeParams);
+    const effectiveParams = {
+        ...(isPlainObject(defaultsResolved) ? defaultsResolved : {}),
+        ...(isPlainObject(runtimeParams) ? runtimeParams : {})
+    };
+
+    if (!Object.keys(effectiveParams).length) {
+        return model;
+    }
+
+    return resolveTemplateValues(model, effectiveParams);
+}
+
+/**
+ * Returns runtime parameters already attached to a model (module drill-down context).
+ * @param {Object|null|undefined} model
+ * @returns {Object<string, unknown>}
+ */
+function getModelRuntimeParameters(model) {
+    const params = model?.settings?.moduleRuntime?.params;
+    return isPlainObject(params) ? { ...params } : {};
+}
+
+/**
+ * Extracts module call parameter overrides from a connection.
+ * Supported field: connection.parameters.
+ * @param {Object|null} connection
+ * @returns {Object<string, unknown>}
+ */
+function extractModuleOverrideParametersFromConnection(connection) {
+    const overrides = {};
+    if (!connection) {
+        return overrides;
+    }
+
+    if (isPlainObject(connection.parameters)) {
+        Object.assign(overrides, connection.parameters);
+    }
+
+    return overrides;
+}
+
+/**
+ * Resolves final runtime parameters for a module invocation.
+ * Merge order: inherited parent runtime parameters -> connection call overrides.
+ * @param {Object|null} callConnection
+ * @returns {Object<string, unknown>}
+ */
+function resolveModuleInvocationParameters(callConnection) {
+    const inherited = getCurrentModuleRuntimeParameters();
+
+    const connectionOverridesRaw = extractModuleOverrideParametersFromConnection(callConnection);
+    const connectionOverridesResolved = resolveTemplateValues(connectionOverridesRaw, {
+        ...inherited
+    });
+
+    return {
+        ...inherited,
+        ...(isPlainObject(connectionOverridesResolved) ? connectionOverridesResolved : {})
+    };
+}
+
+/**
+ * Applies resolved runtime parameters to a child module model.
+ * Replaces template tokens in all string values and writes runtime context.
+ * @param {Object} model
+ * @param {Object<string, unknown>} resolvedParams
+ * @param {Object} moduleDef
+ * @param {Object} component
+ * @param {Object|null} callSelection
+ * @returns {Object}
+ */
+function applyModuleParametersToModel(model, resolvedParams, moduleDef, component, callSelection = null) {
+    const runtimeParams = isPlainObject(resolvedParams) ? { ...resolvedParams } : {};
+    const defaultsRaw = extractModelDefaultParameters(model);
+    const defaultsResolved = resolveTemplateValues(defaultsRaw, runtimeParams);
+    const effectiveParams = {
+        ...(isPlainObject(defaultsResolved) ? defaultsResolved : {}),
+        ...runtimeParams
+    };
+
+    const resolvedModel = resolveTemplateValues(model, effectiveParams);
+    if (!isPlainObject(resolvedModel)) {
+        return model;
+    }
+
+    if (!isPlainObject(resolvedModel.settings)) {
+        resolvedModel.settings = {};
+    }
+
+    resolvedModel.settings.moduleRuntime = {
+        moduleId: moduleDef?.id || null,
+        moduleName: moduleDef?.name || null,
+        parentComponentId: component?.id || null,
+        callConnection: callSelection?.connection ? {
+            id: callSelection.connection.id || null,
+            from: callSelection.connection.from || null,
+            to: callSelection.connection.to || null,
+            order: callSelection.connection.order ?? null,
+            label: callSelection.connection.label || null,
+            labelModuleCall: getConnectionModuleCallLabel(callSelection.connection),
+            groupName: callSelection.groupName || null
+        } : null,
+        params: effectiveParams
+    };
+
+    return resolvedModel;
+}
+
+/**
+ * Returns module call label from connection.
+ * @param {Object|null} connection
+ * @returns {string|null}
+ */
+function getConnectionModuleCallLabel(connection) {
+    const value = typeof connection?.labelModuleCall === 'string' ? connection.labelModuleCall.trim() : '';
+    return value || null;
+}
+
+/**
+ * Builds a user-facing label for a module call connection option.
+ * @param {{connection: Object, groupName: string}} entry
+ * @returns {string}
+ */
+function getModuleCallDisplayLabel(entry) {
+    const conn = entry?.connection || {};
+    const groupName = entry?.groupName || 'Group';
+    const callLabel = getConnectionModuleCallLabel(conn) || conn.label || conn.id || `${conn.from || '?'} -> ${conn.to || '?'}`;
+    return `${groupName} -> ${callLabel}`;
+}
+
+/**
+ * Collects visible module call connections for a module component.
+ * Only visible connections are considered, therefore active connection group filtering is respected.
+ * @param {string} componentId
+ * @returns {Array<{connection: Object, groupName: string}>}
+ */
+function getVisibleModuleCallConnections(componentId) {
+    const incomingCalls = [];
+    const fallbackCalls = [];
+    if (!componentId) {
+        return incomingCalls;
+    }
+
+    scene.traverse(obj => {
+        if (!obj?.visible || !obj?.userData) {
+            return;
+        }
+
+        if (obj.userData.type !== 'connection') {
+            return;
+        }
+
+        const connection = obj.userData.connection;
+        if (!connection) {
+            return;
+        }
+
+        const isIncomingCall = connection.to === componentId;
+        const isFallbackRelated = connection.from === componentId;
+        if (!isIncomingCall && !isFallbackRelated) {
+            return;
+        }
+
+        const entry = {
+            connection,
+            groupName: obj.userData.groupName || 'Group'
+        };
+
+        if (isIncomingCall) {
+            incomingCalls.push(entry);
+        } else {
+            fallbackCalls.push(entry);
+        }
+    });
+
+    const selectedCalls = incomingCalls.length > 0 ? incomingCalls : fallbackCalls;
+
+    selectedCalls.sort((a, b) => {
+        const orderA = Number.isFinite(Number(a.connection?.order)) ? Number(a.connection.order) : Number.MAX_SAFE_INTEGER;
+        const orderB = Number.isFinite(Number(b.connection?.order)) ? Number(b.connection.order) : Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) {
+            return orderA - orderB;
+        }
+        return getModuleCallDisplayLabel(a).localeCompare(getModuleCallDisplayLabel(b));
+    });
+
+    return selectedCalls;
+}
+
+/**
+ * Returns references to module call dialog elements, creating them if needed.
+ * @returns {{overlay: HTMLDivElement, title: HTMLDivElement, list: HTMLUListElement, btnCancel: HTMLButtonElement}}
+ */
+function ensureModuleCallDialogElements() {
+    let overlay = document.getElementById('module-call-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'module-call-overlay';
+        overlay.className = 'module-call-overlay';
+
+        overlay.innerHTML = `
+            <div class="module-call-dialog" role="dialog" aria-modal="true" aria-label="Select module call">
+                <div id="module-call-title" class="module-call-title"></div>
+                <div class="module-call-list-wrap">
+                    <ul id="module-call-list" class="module-call-list"></ul>
+                </div>
+                <div class="module-call-actions">
+                    <button id="btn-module-call-cancel" class="view-panel-button">Cancel</button>
+                </div>
+            </div>`;
+
+        document.body.appendChild(overlay);
+    }
+
+    return {
+        overlay,
+        title: overlay.querySelector('#module-call-title'),
+        list: overlay.querySelector('#module-call-list'),
+        btnCancel: overlay.querySelector('#btn-module-call-cancel')
+    };
+}
+
+/**
+ * Opens module call selection dialog and resolves selected call.
+ * If only one call exists, it is auto-selected and no dialog is shown.
+ * @param {Object} component
+ * @param {Array<{connection: Object, groupName: string}>} callOptions
+ * @returns {Promise<{connection: Object, groupName: string}|null>}
+ */
+function selectModuleCallForComponent(component, callOptions) {
+    if (!Array.isArray(callOptions) || callOptions.length === 0) {
+        return Promise.resolve(null);
+    }
+
+    if (callOptions.length === 1) {
+        return Promise.resolve(callOptions[0]);
+    }
+
+    const { overlay, title, list, btnCancel } = ensureModuleCallDialogElements();
+    title.textContent = `Select module call for ${component?.label || component?.id || 'module'}`;
+    list.innerHTML = '';
+
+    callOptions.forEach((entry, index) => {
+        const li = document.createElement('li');
+        li.className = 'module-call-item';
+        li.textContent = getModuleCallDisplayLabel(entry);
+        li.tabIndex = 0;
+        li.dataset.index = String(index);
+        list.appendChild(li);
+    });
+
+    const closeDialog = (selection) => {
+        if (!moduleCallDialogState.isOpen) {
+            return;
+        }
+
+        moduleCallDialogState.isOpen = false;
+        overlay.style.display = 'none';
+
+        document.removeEventListener('keydown', onKeyDown);
+        btnCancel.removeEventListener('click', onCancel);
+        overlay.removeEventListener('click', onOverlayClick);
+        list.removeEventListener('click', onListClick);
+        list.removeEventListener('keydown', onListKeyDown);
+
+        const resolver = moduleCallDialogState.resolve;
+        moduleCallDialogState.resolve = null;
+        if (resolver) {
+            resolver(selection);
+        }
+    };
+
+    const chooseIndex = (index) => {
+        const chosen = Number.isInteger(index) && index >= 0 && index < callOptions.length
+            ? callOptions[index]
+            : null;
+        closeDialog(chosen);
+    };
+
+    const onOpen = () => {
+        const index = Number(list.querySelector('.module-call-item:focus')?.dataset.index);
+        chooseIndex(index);
+    };
+
+    const onListClick = (event) => {
+        const item = event.target?.closest?.('.module-call-item');
+        if (!item) {
+            return;
+        }
+
+        const index = Number(item.dataset.index);
+        chooseIndex(index);
+    };
+
+    const onListKeyDown = (event) => {
+        const item = event.target?.closest?.('.module-call-item');
+        if (!item) {
+            return;
+        }
+
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            const index = Number(item.dataset.index);
+            chooseIndex(index);
+        }
+    };
+
+    const onCancel = () => {
+        closeDialog(null);
+    };
+
+    const onOverlayClick = (event) => {
+        if (event.target === overlay) {
+            closeDialog(null);
+        }
+    };
+
+    const onKeyDown = (event) => {
+        if (!moduleCallDialogState.isOpen) {
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeDialog(null);
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            onOpen();
+        }
+    };
+
+    moduleCallDialogState.isOpen = true;
+    moduleCallDialogState.resolve = null;
+    overlay.style.display = 'flex';
+
+    btnCancel.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onOverlayClick);
+    list.addEventListener('click', onListClick);
+    list.addEventListener('keydown', onListKeyDown);
+    document.addEventListener('keydown', onKeyDown);
+    const firstItem = list.querySelector('.module-call-item');
+    firstItem?.focus();
+
+    return new Promise(resolve => {
+        moduleCallDialogState.resolve = resolve;
+    });
+}
+
+/**
+ * Updates module navigation controls in view panel.
+ */
+function updateModuleNavigationUI() {
+    const container = document.getElementById('module-nav-bottom');
+    const btnBack = document.getElementById('btn-module-back');
+    const status = document.getElementById('module-nav-status');
+    const inModule = moduleNavigationState.stack.length > 0;
+
+    if (container) {
+        container.style.display = inModule ? 'inline-flex' : 'none';
+    }
+
+    if (btnBack) {
+        btnBack.disabled = !inModule || moduleNavigationState.isNavigating;
+    }
+
+    if (status) {
+        const labels = moduleNavigationState.stack.map(entry => entry.label).filter(Boolean);
+        status.textContent = labels.length > 0
+            ? `root > module ${labels[labels.length - 1]}`
+            : '';
+    }
+}
+
+/**
+ * Ensures module navigation controls exist in view panel.
+ */
+function ensureModuleNavigationControls() {
+    const host = document.getElementById('moduleNavBottomHost');
+    if (!host) {
+        return;
+    }
+
+    if (document.getElementById('module-nav-bottom')) {
+        updateModuleNavigationUI();
+        return;
+    }
+
+    const controls = document.createElement('div');
+    controls.id = 'module-nav-bottom';
+    controls.className = 'module-nav-bottom';
+    controls.style.display = 'none';
+
+    const backBtn = document.createElement('button');
+    backBtn.id = 'btn-module-back';
+    backBtn.className = 'module-nav-bottom-btn';
+    backBtn.textContent = 'Back module';
+    backBtn.addEventListener('click', () => {
+        returnToParentModuleContext();
+    });
+
+    const status = document.createElement('span');
+    status.id = 'module-nav-status';
+    status.className = 'module-nav-bottom-status';
+
+    controls.appendChild(backBtn);
+    controls.appendChild(status);
+    host.appendChild(controls);
+
+    updateModuleNavigationUI();
+}
+
+/**
+ * Enters a referenced module model from a module component.
+ * @param {Object} component
+ * @param {{connection: Object, groupName: string}|null} callSelection
+ * @returns {Promise<void>}
+ */
+function enterModuleFromComponent(component, callSelection = null) {
+    if (moduleNavigationState.isNavigating) {
+        return Promise.resolve();
+    }
+
+    const moduleDef = getModuleDefinitionForComponent(component);
+    const targetFile = String(moduleDef?.file || '').trim();
+    if (!moduleDef || !targetFile) {
+        console.warn(`Module component '${component?.id || '?'}' has no resolvable module definition/file.`);
+        return Promise.resolve();
+    }
+
+    const parentModelClone = cloneModelForNavigation(modelData);
+    if (!parentModelClone) {
+        return Promise.resolve();
+    }
+
+    const resolvedFile = resolvePathFromCurrentModel(targetFile);
+    const callLabel = getConnectionModuleCallLabel(callSelection?.connection) || callSelection?.connection?.label || callSelection?.connection?.id || null;
+    const entryLabelBase = moduleDef.name || moduleDef.id || component.label || component.id || 'module';
+    const entryLabel = callLabel ? `${entryLabelBase}: ${callLabel}` : entryLabelBase;
+
+    moduleNavigationState.stack.push({
+        model: parentModelClone,
+        modelFile: currentModelFile,
+        groupSelection: captureConnectionGroupSelectionState(),
+        currentConnectionIndex,
+        currentSelectedConnectionIndex,
+        cameraPosition: camera.position.clone(),
+        cameraTarget: controls.target.clone(),
+        label: String(entryLabel)
+    });
+
+    moduleNavigationState.isNavigating = true;
+    updateModuleNavigationUI();
+
+    const resolvedParams = resolveModuleInvocationParameters(callSelection?.connection || null);
+
+    return fetchModelFromFile(resolvedFile)
+        .then(rawModuleModel => {
+            const moduleModel = applyModuleParametersToModel(rawModuleModel, resolvedParams, moduleDef, component, callSelection);
+            currentModelFile = resolvedFile;
+            loadModelFromObject(moduleModel);
+            updateModelListUI();
+        })
+        .then(() => {
+            updateModuleNavigationUI();
+        })
+        .catch(err => {
+            console.error('Error entering module:', err);
+            moduleNavigationState.stack.pop();
+            updateModuleNavigationUI();
+        })
+        .finally(() => {
+            moduleNavigationState.isNavigating = false;
+            updateModuleNavigationUI();
+        });
+}
+
+/**
+ * Returns from current module context to the previous parent context.
+ */
+function returnToParentModuleContext() {
+    if (moduleNavigationState.isNavigating) {
+        return;
+    }
+
+    if (moduleNavigationState.stack.length === 0) {
+        return;
+    }
+
+    const parentContext = moduleNavigationState.stack.pop();
+    if (!parentContext?.model) {
+        updateModuleNavigationUI();
+        return;
+    }
+
+    moduleNavigationState.isNavigating = true;
+
+    loadModelFromObject(parentContext.model);
+    currentModelFile = parentContext.modelFile || currentModelFile;
+    restoreConnectionGroupSelectionState(parentContext.groupSelection || null);
+
+    currentConnectionIndex = Math.max(0, Math.min(parentContext.currentConnectionIndex || 0, connectionSequence.length));
+    currentSelectedConnectionIndex = connectionSequence.length > 0
+        ? Math.max(-1, Math.min(parentContext.currentSelectedConnectionIndex ?? -1, connectionSequence.length - 1))
+        : -1;
+
+    if (parentContext.cameraPosition && parentContext.cameraTarget) {
+        camera.position.copy(parentContext.cameraPosition);
+        controls.target.copy(parentContext.cameraTarget);
+        controls.update();
+    }
+
+    updateCurrentConnectionMarker();
+    updateFlowControlButtons();
+    updateModelListUI();
+
+    moduleNavigationState.isNavigating = false;
+    updateModuleNavigationUI();
+}
+
+/**
+ * Handles double-click drill-down into module components.
+ * @param {MouseEvent} event
+ */
+async function onModuleComponentDoubleClick(event) {
+    if (moduleNavigationState.isNavigating) {
+        return;
+    }
+
+    const rect = renderer.domElement.getBoundingClientRect();
+    modulePointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    modulePointerNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    moduleRaycaster.setFromCamera(modulePointerNdc, camera);
+
+    const roots = [];
+    componentMeshes.forEach(({ mesh }) => {
+        if (mesh?.visible) {
+            roots.push(mesh);
+        }
+    });
+
+    if (roots.length === 0) {
+        return;
+    }
+
+    const intersections = moduleRaycaster.intersectObjects(roots, true);
+    if (!Array.isArray(intersections) || intersections.length === 0) {
+        return;
+    }
+
+    let hitObject = intersections[0].object;
+    while (hitObject && (!hitObject.userData || !hitObject.userData.id)) {
+        hitObject = hitObject.parent;
+    }
+
+    const componentId = hitObject?.userData?.id;
+    const componentEntry = componentId ? componentMeshes.get(componentId) : null;
+    const component = componentEntry?.data || null;
+
+    if (!component) {
+        return;
+    }
+
+    const isModuleComponent = component.type === 'module' || !!component.moduleRef;
+    if (!isModuleComponent) {
+        return;
+    }
+
+    event.preventDefault();
+
+    const callOptions = getVisibleModuleCallConnections(component.id);
+    const selectedCall = await selectModuleCallForComponent(component, callOptions);
+    if (callOptions.length > 1 && !selectedCall) {
+        return;
+    }
+
+    enterModuleFromComponent(component, selectedCall);
+}
+
+/**
+ * Handles keyboard shortcut for returning to parent module context.
+ * In module context, Escape/Backspace return only when no developer connection is selected.
+ * @param {KeyboardEvent} event
+ */
+function onModuleNavigationKeyDown(event) {
+    if (moduleCallDialogState.isOpen) {
+        return;
+    }
+
+    if (event.defaultPrevented) {
+        return;
+    }
+
+    if (moduleNavigationState.stack.length === 0 || moduleNavigationState.isNavigating) {
+        return;
+    }
+
+    const target = event.target;
+    const targetTag = target && target.tagName ? String(target.tagName).toLowerCase() : '';
+    const isTypingTarget =
+        targetTag === 'input' ||
+        targetTag === 'textarea' ||
+        targetTag === 'select' ||
+        !!target?.isContentEditable;
+    if (isTypingTarget) {
+        return;
+    }
+
+    const hasDeveloperSelection = !!developerModeState.selectedLine;
+    if (hasDeveloperSelection) {
+        return;
+    }
+
+    const key = String(event.key || '').toLowerCase();
+    if (key === 'escape' || key === 'backspace') {
+        event.preventDefault();
+        returnToParentModuleContext();
+    }
+}
+
+/**
  * Loads additional model definitions from external properties file.
  * Keeps default models from viewer.js and appends external unique entries.
  * @returns {Promise<void>} Promise that resolves after loading/merging external models
  */
 async function loadAdditionalModelFilesFromProperties() {
     try {
-        const response = await fetch(externalModelPropertiesFile);
+        const response = await fetch(externalModelPropertiesFile, { cache: 'no-store' });
         if (!response.ok) {
             return;
         }
@@ -290,6 +1282,10 @@ function addLayerLabels(model) {
     const x = -18;          // Offset to the left of center
 
     layers.forEach(layer => {
+        if (!isLayerVisible(layer)) {
+            return;
+        }
+
         const z = layer.z || 0;
         const name = layer.name || `Layer ${z}`;
 
@@ -499,7 +1495,8 @@ function recordDeveloperHistory(beforeSnapshot, afterSnapshot, beforeSelection =
 }
 
 /**
- * Captures current active state of connection groups.
+ * Captures current interactive active state of connection groups.
+ * Note: general visibility is controlled by group.visible and is not part of this snapshot.
  * @returns {{byOrderName: Map<string, boolean>, byName: Map<string, boolean>}}
  */
 function captureConnectionGroupSelectionState() {
@@ -509,7 +1506,7 @@ function captureConnectionGroupSelectionState() {
     connectionGroups.forEach((group, index) => {
         const orderValue = group.order != null ? group.order : index;
         const nameValue = group.name || `Group ${index + 1}`;
-        const activeValue = group.active !== false;
+        const activeValue = isGroupActive(group);
 
         byOrderName.set(`${orderValue}|${nameValue}`, activeValue);
         if (!byName.has(nameValue)) {
@@ -521,7 +1518,8 @@ function captureConnectionGroupSelectionState() {
 }
 
 /**
- * Restores active state of connection groups from a snapshot.
+ * Restores interactive active state of connection groups from a snapshot.
+ * Visibility is still governed by group.visible and defaults.
  * @param {{byOrderName: Map<string, boolean>, byName: Map<string, boolean>}|null} snapshot
  */
 function restoreConnectionGroupSelectionState(snapshot) {
@@ -1474,15 +2472,26 @@ function onDeveloperKeyDown(event) {
         return;
     }
 
+    if (event.defaultPrevented) {
+        return;
+    }
+
     const key = String(event.key || '').toLowerCase();
+    const hasDeveloperSelection = !!developerModeState.selectedLine;
 
     if (key === 'escape') {
+        if (!hasDeveloperSelection) {
+            return;
+        }
         event.preventDefault();
         clearDeveloperSelection();
         return;
     }
 
     if (key === 'delete' || key === 'backspace') {
+        if (!hasDeveloperSelection) {
+            return;
+        }
         event.preventDefault();
         deleteDeveloperActivePoint();
         return;
@@ -1891,7 +2900,7 @@ function normalizeComponentLabelText(text) {
 
 /**
  * Creates 3D meshes for all components in the model.
- * Supports multiple component types: boxes, cylinders (databases), queues, schedulers, actors.
+ * Supports multiple component types: boxes, cylinders (databases), queues, schedulers, actors, modules.
  * @param {Object} model - The model object
  * @param {Object} [model.typeStyles] - Style definitions per component type
  * @param {Array<Object>} [model.layers] - Array of layer objects containing components
@@ -1901,6 +2910,7 @@ function createComponents(model) {
     const layers = model.layers || [];
 
     layers.forEach(layer => {
+        const layerVisible = isLayerVisible(layer);
         const z = layer.z || 0;
         (layer.components || []).forEach(c => {
             let radius;
@@ -1986,6 +2996,11 @@ function createComponents(model) {
                         radius = Math.max(width, height) / 2;
                         const bodyHeight = depth * 0.5; // Slightly flatter than height
                         geometry = new THREE.CylinderGeometry(radius, radius, bodyHeight, 32);
+                        break;
+                    }
+                    case 'module': {
+                        // Module baseline rendering in v1: service-like box with explicit marker.
+                        geometry = new THREE.BoxGeometry(width, height, depth);
                         break;
                     }
 
@@ -2189,8 +3204,11 @@ function createComponents(model) {
                 data: c,
                 width,
                 height,
-                depth
+                depth,
+                layerVisible
             };
+
+            mesh.visible = layerVisible && isComponentVisible(c);
 
             scene.add(mesh);
 
@@ -2230,6 +3248,14 @@ function createComponents(model) {
                 }
             }
 
+            // Baseline module marker for visual distinction from regular services.
+            if (c.type === 'module') {
+                const marker = createTextSprite('MODULE');
+                marker.scale.set(0.95, 0.35, 1);
+                marker.position.set((width / 2) - 0.5, (height / 2) + 0.25, (depth / 2) + 0.02);
+                mesh.add(marker);
+            }
+
 
 
             // Calculate center (for connections etc.)
@@ -2237,8 +3263,45 @@ function createComponents(model) {
             mesh.updateMatrixWorld();
             mesh.getWorldPosition(center);
             componentCenters.set(c.id, center);
-            componentMeshes.set(c.id, { mesh, data: c });
+            componentMeshes.set(c.id, { mesh, data: c, layerVisible });
 
+        });
+    });
+}
+
+/**
+ * Validates optional module definitions and references.
+ * Logs warnings for invalid moduleRef usage so baseline feature can fail soft.
+ * @param {Object} model - Loaded model object
+ */
+function validateModelModuleReferences(model) {
+    const modules = Array.isArray(model?.modules) ? model.modules : [];
+    const moduleIds = new Set(
+        modules
+            .map(m => (m && typeof m.id === 'string') ? m.id.trim() : '')
+            .filter(Boolean)
+    );
+
+    (model?.layers || []).forEach((layer, layerIndex) => {
+        (layer?.components || []).forEach((component, componentIndex) => {
+            const hasModuleRef = typeof component?.moduleRef === 'string' && component.moduleRef.trim().length > 0;
+            const isModuleType = component?.type === 'module';
+
+            if (!isModuleType && !hasModuleRef) {
+                return;
+            }
+
+            const compId = component?.id || `layer${layerIndex + 1}-component${componentIndex + 1}`;
+            const ref = hasModuleRef ? component.moduleRef.trim() : '';
+
+            if (!hasModuleRef) {
+                console.warn(`Module component '${compId}' has no moduleRef.`);
+                return;
+            }
+
+            if (!moduleIds.has(ref)) {
+                console.warn(`Component '${compId}' references unknown moduleRef '${ref}'.`);
+            }
         });
     });
 }
@@ -2497,15 +3560,16 @@ function createConnections(model) {
  * Updates visibility of connections based on active/inactive connection groups.
  */
 function updateConnectionVisibilityFromGroups() {
-    if (!Array.isArray(connectionGroups) || connectionGroups.length === 0) {
-        return;
+    const groupStateMap = new Map();
+    if (Array.isArray(connectionGroups)) {
+        connectionGroups.forEach(g => {
+            const groupName = g?.name || 'Group';
+            groupStateMap.set(groupName, {
+                visible: isGroupVisible(g),
+                active: isGroupActive(g)
+            });
+        });
     }
-
-    // Map for quick access: groupName -> active
-    const activeMap = new Map();
-    connectionGroups.forEach(g => {
-        activeMap.set(g.name || 'Group', !!g.active);
-    });
 
     scene.traverse(obj => {
         if (!obj.userData) return;
@@ -2513,10 +3577,13 @@ function updateConnectionVisibilityFromGroups() {
         const ud = obj.userData;
         if (ud.type === 'connection' || ud.type === 'connectionArrow') {
             const groupName = ud.groupName || 'Group';
-            const isActive = activeMap.get(groupName);
+            const groupState = groupStateMap.get(groupName) || { visible: true, active: true };
+            const connectionVisible = isConnectionVisible(ud.connection);
+            const endpointsVisible =
+                isComponentIdVisibleByFlags(ud.connection?.from) &&
+                isComponentIdVisibleByFlags(ud.connection?.to);
 
-            // Falls Gruppe nicht bekannt (z.B. Fallback), default = true
-            obj.visible = (isActive === undefined) ? true : isActive;
+            obj.visible = groupState.visible && groupState.active && connectionVisible && endpointsVisible;
         }
     });
 
@@ -2535,9 +3602,10 @@ function updateComponentVisibilityFromGroups() {
     }
 
     if (!modelVisualSettings.selectConnectionsAndComponents) {
-        componentMeshes.forEach(({ mesh }) => {
+        componentMeshes.forEach(entry => {
+            const mesh = entry?.mesh;
             if (mesh) {
-                mesh.visible = true;
+                mesh.visible = isComponentEntryVisibleByFlags(entry);
             }
         });
         return;
@@ -2546,9 +3614,12 @@ function updateComponentVisibilityFromGroups() {
     const visibleComponentIds = new Set();
 
     connectionGroups
-        .filter(group => group && group.active)
+        .filter(group => group && isGroupVisible(group) && isGroupActive(group))
         .forEach(group => {
             (group.connections || []).forEach(conn => {
+                if (!isConnectionVisible(conn)) {
+                    return;
+                }
                 if (conn?.from) visibleComponentIds.add(conn.from);
                 if (conn?.to) visibleComponentIds.add(conn.to);
             });
@@ -2556,7 +3627,7 @@ function updateComponentVisibilityFromGroups() {
 
     componentMeshes.forEach((entry, componentId) => {
         if (!entry?.mesh) return;
-        entry.mesh.visible = visibleComponentIds.has(componentId);
+        entry.mesh.visible = isComponentEntryVisibleByFlags(entry) && visibleComponentIds.has(componentId);
     });
 }
 
@@ -2662,7 +3733,7 @@ function rebuildConnectionSequence() {
 
     // 1. aktive Gruppen nach order sortieren
     const activeGroups = connectionGroups
-        .filter(g => g.active)
+        .filter(g => isGroupVisible(g) && isGroupActive(g))
         .sort((a, b) => (a.order || 0) - (b.order || 0));
 
     if (activeGroups.length === 0) {
@@ -2690,6 +3761,10 @@ function rebuildConnectionSequence() {
         });
 
         conns.forEach(conn => {
+            if (!isConnectionVisible(conn)) {
+                return;
+            }
+
             const line = allConnectionLines.find(lineObj => {
                 const c = lineObj.userData && lineObj.userData.connection;
                 if (!c) return false;
@@ -2901,7 +3976,9 @@ function startDataFlowOnConnection(connObject, options = {}) {
  */
 function loadModelFromObject(model) {
     clearScene();
-    modelData = model;
+    const runtimeParams = getModelRuntimeParameters(model);
+    const modelWithResolvedParameters = resolveModelParameters(model, runtimeParams);
+    modelData = normalizeModelVisibilityFlags(modelWithResolvedParameters);
     clearDeveloperSelection();
     updateDeveloperModeUI();
 
@@ -2909,13 +3986,14 @@ function loadModelFromObject(model) {
         resetDeveloperHistory();
     }
 
-    applyFlowTimingSettingsFromModel(model);
+    applyFlowTimingSettingsFromModel(modelData);
+    validateModelModuleReferences(modelData);
     syncViewPanelStateFromSettings();
-    addLayerLabels(model);
-    createComponents(model);
+    addLayerLabels(modelData);
+    createComponents(modelData);
     // Get connectionGroups from model
-    setupConnectionGroupsFromModel(model);
-    createConnections(model);
+    setupConnectionGroupsFromModel(modelData);
+    createConnections(modelData);
 }
 
 /**
@@ -2932,7 +4010,8 @@ function setupConnectionGroupsFromModel(model) {
             name: g.name || `Group ${index + 1}`,
             order: g.order != null ? g.order : index,
             color: g.color || defaultConnectionColor,
-            active: g.active !== false, // Default: true
+            visible: isGroupVisible(g),
+            active: isGroupActive(g), // interactive toggle; subordinate to visible
             connections: Array.isArray(g.connections) ? g.connections : []
         }));
     } else {
@@ -2941,6 +4020,7 @@ function setupConnectionGroupsFromModel(model) {
         connectionGroups = [{
             name: 'All Connections',
             order: 0,
+            visible: true,
             active: true,
             connections: flatConnections
         }];
@@ -2961,13 +4041,7 @@ function setupConnectionGroupsFromModel(model) {
 function loadModelFromFile(fileName) {
     currentModelFile = fileName;
 
-    return fetch(fileName)
-        .then(resp => {
-            if (!resp.ok) {
-                throw new Error(`HTTP ${resp.status} while loading ${fileName}`);
-            }
-            return resp.json();
-        })
+    return fetchModelFromFile(fileName)
         .then(model => {
             loadModelFromObject(model);
             updateModelListUI();
@@ -2975,6 +4049,21 @@ function loadModelFromFile(fileName) {
         .catch(err => {
             console.error('Error loading model:', err);
             alert('Error loading model: ' + fileName);
+        });
+}
+
+/**
+ * Loads and parses a model JSON file via fetch.
+ * @param {string} fileName - Path to the JSON model file
+ * @returns {Promise<Object>} Promise with parsed model object
+ */
+function fetchModelFromFile(fileName) {
+    return fetch(fileName, { cache: 'no-store' })
+        .then(resp => {
+            if (!resp.ok) {
+                throw new Error(`HTTP ${resp.status} while loading ${fileName}`);
+            }
+            return resp.json();
         });
 }
 
@@ -3007,6 +4096,7 @@ function buildModelListUI() {
 
         li.addEventListener('click', () => {
             loadModelFromFile(entry.file);
+            panel.style.display = 'none';
         });
 
         ul.appendChild(li);
@@ -3259,6 +4349,8 @@ function initViewPanel() {
         exportDeveloperModelJson();
     });
 
+    ensureModuleNavigationControls();
+
     updateDeveloperModeUI();
 }
 
@@ -3427,7 +4519,9 @@ renderer.domElement.addEventListener('pointerdown', onDeveloperPointerDown);
 renderer.domElement.addEventListener('pointermove', onDeveloperPointerMove);
 renderer.domElement.addEventListener('pointerup', onDeveloperPointerUp);
 renderer.domElement.addEventListener('pointercancel', onDeveloperPointerUp);
+renderer.domElement.addEventListener('dblclick', onModuleComponentDoubleClick);
 window.addEventListener('keydown', onDeveloperKeyDown);
+window.addEventListener('keydown', onModuleNavigationKeyDown);
 
 // ============================================================================
 // Animation Loop
@@ -3516,7 +4610,10 @@ fileInput.addEventListener('change', event => {
     reader.onload = e => {
         try {
             const json = JSON.parse(e.target.result);
+            currentModelFile = file.name || 'local-upload.json';
+            moduleNavigationState.stack = [];
             loadModelFromObject(json);
+            updateModuleNavigationUI();
         } catch (err) {
             console.error('Error parsing JSON file:', err);
             alert('The file is not a valid JSON model file.');
@@ -3794,7 +4891,7 @@ function updateBusinessGroupsMasterCheckboxState(checkbox, businessGroups) {
     }
 
     checkbox.disabled = false;
-    const activeCount = businessGroups.filter(group => group.active !== false).length;
+    const activeCount = businessGroups.filter(group => isGroupActive(group)).length;
 
     checkbox.checked = activeCount === businessGroups.length;
     checkbox.indeterminate = activeCount > 0 && activeCount < businessGroups.length;
@@ -3819,7 +4916,7 @@ function buildConnectionGroupsUI() {
     const groupsScrollList = document.createElement('div');
     groupsScrollList.className = 'connection-groups-scroll-list';
 
-    const businessGroups = connectionGroups.filter(isBusinessConnectionGroup);
+    const businessGroups = connectionGroups.filter(group => isBusinessConnectionGroup(group) && isGroupVisible(group));
 
     const masterRow = document.createElement('div');
     masterRow.className = 'connection-group-row connection-group-row-master';
@@ -3895,7 +4992,8 @@ function buildConnectionGroupsUI() {
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.checked = group.active;
+        checkbox.checked = isGroupActive(group);
+        checkbox.disabled = !isGroupVisible(group);
 
         checkbox.addEventListener('change', () => {
             group.active = checkbox.checked;

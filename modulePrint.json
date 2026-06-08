@@ -1,0 +1,211 @@
+﻿{
+    "parameters": {
+        "visibleUserService": true,
+        "visibleOrderService": true,
+        "printData": "relevant data"
+    },
+    "layers": [
+        {
+            "name": "Actors",
+            "z": 8,
+            "components": [
+                {
+                    "id": "U1",
+                    "label": "Kunde",
+                    "type": "actor",
+                    "x": 0,
+                    "y": 0,
+                    "width": 2,
+                    "height": 2,
+                    "depth": 1
+                }
+            ]
+        },
+        {
+            "name": "I/O",
+            "z": 5,
+            "components": [
+                {
+                    "id": "OMS",
+                    "label": "Output\nManagement\nSystem",
+                    "type": "service",
+                    "x": 0,
+                    "y": 0,
+                    "width": 2,
+                    "height": 1,
+                    "depth": 1
+                }
+            ]
+        },
+        {
+            "name": "Business",
+            "z": 2,
+            "components": [
+                {
+                    "id": "S1",
+                    "label": "User\nService",
+                    "type": "service",
+                    "visible": "{{visibleUserService}}",
+                    "x": -6,
+                    "y": 0,
+                    "width": 2,
+                    "height": 1,
+                    "depth": 1
+                },
+                {
+                    "id": "S2",
+                    "label": "Order\nService",
+                    "type": "service",
+                    "visible": "{{visibleOrderService}}",
+                    "x": -2,
+                    "y": 0,
+                    "width": 2,
+                    "height": 1,
+                    "depth": 1
+                },
+                {
+                    "id": "P1",
+                    "label": "Print\nService",
+                    "type": "service",
+                    "x": 2,
+                    "y": 0,
+                    "width": 2,
+                    "height": 1,
+                    "depth": 1
+                }
+            ]
+        }
+    ],
+    "connectionGroups": [
+        {
+            "name": "print data {{printData}}",
+            "order": 1,
+            "visible": true,
+            "active": true,
+            "connections": [
+                {
+                    "from": "S1",
+                    "to": "P1",
+                    "protocol": "REST/HTTPS",
+                    "direction": "outbound",
+                    "visible": "{{visibleUserService}}",
+                    "order": 101,
+                    "label": "email data {{printData}}",
+                    "id": "Dummy",
+                    "begin": "y+",
+                    "end": "y+",
+                    "points": [
+                        {
+                            "x": -6,
+                            "y": 1.5,
+                            "z": 2
+                        },
+                        {
+                            "x": 2,
+                            "y": 1.5,
+                            "z": 2
+                        }
+                    ]
+                },
+                {
+                    "from": "S2",
+                    "to": "P1",
+                    "protocol": "REST/HTTPS",
+                    "direction": "outbound",
+                    "visible": "{{visibleOrderService}}",
+                    "order": 102,
+                    "label": "email data {{printData}}",
+                    "id": "Dummy",
+                    "begin": "y+",
+                    "end": "y+",
+                    "points": [
+                        {
+                            "x": -2,
+                            "y": 1.5,
+                            "z": 2
+                        },
+                        {
+                            "x": 2,
+                            "y": 1.5,
+                            "z": 2
+                        }
+                    ]
+                },
+                {
+                    "from": "P1",
+                    "to": "P1",
+                    "protocol": "SMTP/email",
+                    "direction": "outbound",
+                    "order": 103,
+                    "label": "generate email {{printData}}",
+                    "id": "Dummy",
+                    "begin": "y-",
+                    "end": "z+",
+                    "points": [
+                        {
+                            "x": 2,
+                            "y": -1.5,
+                            "z": 2
+                        },
+                        {
+                            "x": 2,
+                            "y": -1.5,
+                            "z": 3.5
+                        },
+                        {
+                            "x": 2,
+                            "y": 0,
+                            "z": 3.5
+                        }
+                    ]
+                },
+                {
+                    "from": "P1",
+                    "to": "OMS",
+                    "protocol": "SMTP/email",
+                    "direction": "outbound",
+                    "order": 104,
+                    "label": "send email {{printData}}",
+                    "id": "Dummy",
+                    "begin": "z+",
+                    "end": "x+",
+                    "points": [
+                        {
+                            "x": 2,
+                            "y": 0,
+                            "z": 5
+                        }
+                    ]
+                },
+                {
+                    "from": "OMS",
+                    "to": "U1",
+                    "protocol": "SMTP/email",
+                    "direction": "outbound",
+                    "order": 105,
+                    "label": "send email {{printData}}",
+                    "id": "Dummy",
+                    "begin": "z+",
+                    "end": "z-"
+                }
+            ]
+        }
+    ],
+    "typeStyles": {
+        "actor": {
+            "color": "yellow",
+            "activeColor": "yellowgreen"
+        },
+        "service": {
+            "color": "lightseagreen",
+            "activeColor": "green"
+        }
+    },
+    "settings": {
+        "flowDurationMin": 2.0,
+        "flowSpeed": 3.0,
+        "animateComponents": false,
+        "selectConnectionsAndComponents": false,
+        "developerMode": true
+    }
+}
