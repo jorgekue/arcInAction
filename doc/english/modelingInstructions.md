@@ -259,7 +259,8 @@ Example:
 
 - Representation: service-like box with explicit module marker in viewer.
 - Interaction: double-click enters referenced module model (drill-down).
-- Return navigation: `Back module` button in view panel, or `Escape`.
+- Return navigation: `Back module` button in view panel, or `Backspace`/`Escape` when no connection is selected.
+- Edit-mode note: with a selected connection, `Escape`, `Backspace`, and `Delete` keep their edit behavior.
 
 ---
 

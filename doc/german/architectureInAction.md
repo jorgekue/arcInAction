@@ -9,6 +9,7 @@
 - [Deklarativer Modell‑Ansatz](#deklarativer-modell‑ansatz)
 - [Laden der Modelle](#laden-der-modelle)
 - [Definition der Connections und der Datenfluss‑Animation](#definition-der-connections-und-der-datenfluss‑animation)
+- [Drill-down in Module](#drill-down-in-module)
 - [Reduktion der Modellierungskomplexität mit KI-Unterstützung](#reduktion-der-modellierungskomplexität-mit-ki-unterstützung)
 - [Zusammenfassung und Fazit](#zusammenfassung-und-fazit)
 - [Über den Autor](#über-den-Autor)
@@ -275,6 +276,32 @@ Die Animation wird über das Schalterfeld **unten mittig** gesteuert:
 ![Animationssteuerung](/doc/img/animationControls.gif)
 
 _Bild: Animations‑Steuerung._
+
+---
+# Drill-down in Module
+
+Mit der Modul-Unterstützung können wiederverwendbare Architekturteile als eigenes Modell gekapselt und im Ausgangsmodell referenziert werden. Das schafft mehr Übersicht in größeren Modellen und reduziert Duplikate und vereinfacht die Pflege, weil wiederkehrende Logik nur einmal modelliert werden muss.
+
+Fachlich wird ein Modul als Komponente vom Typ `module` eingebunden. Der konkrete Aufruf kann über die jeweilige Connection konfiguriert werden, inklusive aufrufspezifischer Parameter.
+
+## Navigation und Bedienung im Viewer
+
+Der Einstieg erfolgt per Doppelklick auf die Modul-Komponente. Falls mehrere mögliche Aufrufe auf die Modul-Komponente zeigen, blendet der Viewer ggf. ein Auswahl-Popup zu den aktuell möglichen, aktiven Connections ein.
+
+Nach dem Einstieg in ein Modul bleibt der Kontext als Navigations-Stack erhalten. Der Rücksprung ins Ausgangsmodell erfolgt über:
+
+- den Button `Back module` (unten links),
+- `Backspace` oder `Escape`, wenn keine Connection (im Edit-Mode) selektiert ist.
+
+## Parameterisierung und Wiederverwendung
+
+Die effektiven Runtime-Parameter ergeben sich aus:
+
+1. geerbten Parent-Runtime-Parametern,
+2. Defaults aus dem `parameters`-Block des referenzierten Child-Modells,
+3. aufrufspezifischen Overrides aus `connection.parameters`.
+
+Module sowohl eigenständig nutzbar (durch Default-Parameter) als auch flexibel je Aufruf/Connection konfigurierbar. Das ist besonders hilfreich, wenn dasselbe Modul im selben oder in verschiedenen Modellen mit unterschiedlicher Ausprägung genutzt wird.
 
 ---
 # Reduktion der Modellierungskomplexität mit KI-Unterstützung

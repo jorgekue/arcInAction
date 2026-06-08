@@ -259,7 +259,8 @@ Beispiel:
 
 - Darstellung: service-aehnliche Box mit expliziter Modulkennzeichnung im Viewer.
 - Interaktion: Doppelklick oeffnet das referenzierte Modulmodell (Drill-Down).
-- Ruecksprung: `Back module` Button im View-Panel oder `Escape`.
+- Ruecksprung: `Back module` Button im View-Panel oder `Backspace`/`Escape`, wenn keine Connection selektiert ist.
+- Hinweis Edit-Modus: Bei selektierter Connection behalten `Escape`, `Backspace` und `Delete` ihre Edit-Bedeutung.
 
 ---
 

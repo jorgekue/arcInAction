@@ -49,6 +49,11 @@ Prerequisite:
 
 - Press Escape.
 
+### 6. Keyboard Behavior in Module Context
+
+- With a selected connection, `Escape`, `Backspace`, and `Delete` keep their edit behavior.
+- Without a selected connection, return to parent/root is done via `Backspace` or `Escape` (or the `Back module` button).
+
 ## Undo / Redo
 
 - Ctrl+Z: Undo

@@ -51,6 +51,10 @@ Connections bilden Kommunikationsbeziehungen zwischen Komponenten ab und dienen 
 
 Für größere Modelle werden Verbindungen in Gruppen organisiert. Das erlaubt es, gezielt auf einzelne Gruppen zu fokussieren und komplexe Diagramme schrittweise zu erklären, statt alles gleichzeitig zu zeigen.
 
+## Drill-down in Module
+
+Mit der Modul-Unterstützung lassen sich wiederverwendbare Architekturteile als eigenes Modell kapseln und im Ausgangsmodell über Connections referenzieren. Dies kann auch mehrfach erfolgen, aus dem selben Modell oder über verschiedene Ausgangsmodelle hinweg. Dadurch muss wiederkehrende Logik nicht mehrfach modelliert und gepflegt werden. Zu diesem Zweck sind Module parametrisierbar und die Parameter werden dann je nach Aufruf über die jeweilige Connection injiziert. Im Viewer kann per Doppelklick direkt in ein Modul gewechselt werden.
+
 ## Reduktion der Modellierungskomplexität mit KI-Unterstützung
 
 Mit wachsender Architektur steigt der Aufwand, konsistente aia-Modelle manuell in JSON zu pflegen. KI-Werkzeuge können hier helfen, die Komplexität der Modellierung deutlich zu reduzieren, ohne auf fachliche Qualität zu verzichten.

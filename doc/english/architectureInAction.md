@@ -9,6 +9,7 @@
 - [Declarative Model Approach](#declarative-model-approach)
 - [Loading Models](#loading-models)
 - [Definition of Connections and Data Flow Animation](#definition-of-connections-and-data-flow-animation)
+- [Drill-down in Modules](#drill-down-in-modules)
 - [Reducing Modeling Complexity with AI Support](#reducing-modeling-complexity-with-ai-support)
 - [Summary and Conclusion](#summary-and-conclusion)
 - [About the Author](#about-the-author)
@@ -279,6 +280,32 @@ The animation is controlled via the control panel **in the lower center**:
 ![Animation Controls](/doc/img/animationControls.gif)
 
 _Image: Animation controls._
+
+---
+# Drill-down in Modules
+
+With module support, reusable architecture parts can be encapsulated as dedicated models and referenced from a parent model. This improves clarity in larger models, reduces duplication, and simplifies maintenance because recurring logic only needs to be modeled once.
+
+Conceptually, a module is integrated as a component with type `module`. The concrete invocation is configured via the invoking connection, including call-specific parameters.
+
+## Navigation and Viewer Interaction
+
+Entry is done via double-click on the module component. If multiple possible invocations point to that module component, the viewer can show a selection popup with the currently possible and active connections.
+
+After entering a module, the context is retained in a navigation stack. Return to the parent model works via:
+
+- the `Back module` button (bottom left),
+- `Backspace` or `Escape`, when no connection (in edit mode) is selected.
+
+## Parameterization and Reuse
+
+Effective runtime parameters are resolved from:
+
+1. inherited parent runtime parameters,
+2. defaults from the `parameters` block of the referenced child model,
+3. call-specific overrides from `connection.parameters`.
+
+This keeps modules independently usable (via default parameters) while still allowing flexible per-call and per-connection configuration. This is especially helpful when the same module is reused in the same model or across multiple models with different variants.
 
 ---
 # Reducing Modeling Complexity with AI Support

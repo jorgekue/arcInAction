@@ -1116,7 +1116,7 @@ async function onModuleComponentDoubleClick(event) {
 
 /**
  * Handles keyboard shortcut for returning to parent module context.
- * Escape always returns when in module context. Backspace returns when dev mode is off.
+ * In module context, Escape/Backspace return only when no developer connection is selected.
  * @param {KeyboardEvent} event
  */
 function onModuleNavigationKeyDown(event) {
@@ -1143,8 +1143,13 @@ function onModuleNavigationKeyDown(event) {
         return;
     }
 
+    const hasDeveloperSelection = !!developerModeState.selectedLine;
+    if (hasDeveloperSelection) {
+        return;
+    }
+
     const key = String(event.key || '').toLowerCase();
-    if (key === 'escape' || (key === 'backspace' && !developerModeState.enabled)) {
+    if (key === 'escape' || key === 'backspace') {
         event.preventDefault();
         returnToParentModuleContext();
     }
@@ -2467,15 +2472,26 @@ function onDeveloperKeyDown(event) {
         return;
     }
 
+    if (event.defaultPrevented) {
+        return;
+    }
+
     const key = String(event.key || '').toLowerCase();
+    const hasDeveloperSelection = !!developerModeState.selectedLine;
 
     if (key === 'escape') {
+        if (!hasDeveloperSelection) {
+            return;
+        }
         event.preventDefault();
         clearDeveloperSelection();
         return;
     }
 
     if (key === 'delete' || key === 'backspace') {
+        if (!hasDeveloperSelection) {
+            return;
+        }
         event.preventDefault();
         deleteDeveloperActivePoint();
         return;
