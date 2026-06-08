@@ -265,7 +265,7 @@ Example:
 
 ## 5.7 Root modules section
 
-The root-level `modules` section defines reusable child models and their defaults.
+The root-level `modules` section defines reusable child models.
 
 ```json
 {
@@ -273,12 +273,7 @@ The root-level `modules` section defines reusable child models and their default
     {
       "id": "M_REGISTRATION",
       "name": "Registration Module",
-      "file": "modules/registration-module.json",
-      "parameters": {
-        "tenant": "unknown",
-        "channel": "unknown",
-        "apiProtocol": "unknown"
-      }
+      "file": "modules/registration-module.json"
     }
   ]
 }
@@ -288,8 +283,10 @@ The root-level `modules` section defines reusable child models and their default
 
 For a module invocation, effective runtime parameters are merged in this order:
 1. inherited parent runtime parameters
-2. module definition defaults (`modules[].parameters`)
-3. module call overrides on the selected connection (`moduleCallParams` or `moduleParams`)
+2. child model defaults (`parameters` block in the referenced module JSON)
+3. module call overrides on the selected connection (`parameters`)
+
+Default parameters on module definitions (`modules[].parameters`) and on module components are no longer supported.
 
 Template placeholders in child model JSON are resolved via `{{paramName}}`.
 Resolved runtime values are available in `settings.moduleRuntime.params`.
@@ -304,7 +301,7 @@ Only currently visible connections are considered (connection group filtering is
 Use these optional connection attributes:
 
 - `labelModuleCall (string)`: dedicated display label in the module-call selection popup.
-- `moduleCallParams (object)`: call-specific runtime parameter overrides for module invocation.
+- `parameters (object)`: call-specific runtime parameter overrides for module invocation.
 
 Example:
 
@@ -315,7 +312,7 @@ Example:
   "to": "MOD_REG",
   "label": "Delegate to module",
   "labelModuleCall": "Portal registration",
-  "moduleCallParams": {
+  "parameters": {
     "tenant": "bkv-de",
     "channel": "portal",
     "apiProtocol": "HTTPS/REST"

@@ -83,7 +83,8 @@ const developerEditHistory = {
  */
 const defaultModelFiles = [
     { name: 'Standard model', file: 'model.json' },
-    { name: 'Simple model', file: 'simple-model.json' }
+    { name: 'Simple model', file: 'simple-model.json' },
+    { name: 'Module Print', file: 'modulePrint.json' }
 ];
 
 /** @type {Array<{name: string, file: string}>} Full list of available models (default + external) */
@@ -506,66 +507,57 @@ function resolveTemplateValues(value, params) {
 }
 
 /**
- * Extracts module default parameters from module definition.
- * Supports object and array syntax.
- * @param {Object} moduleDef
+ * Extracts top-level model default parameters from model.parameters.
+ * @param {Object|null|undefined} model
  * @returns {Object<string, unknown>}
  */
-function extractModuleDefaultParameters(moduleDef) {
-    const parameters = moduleDef?.parameters;
+function extractModelDefaultParameters(model) {
+    const parameters = model?.parameters;
     if (isPlainObject(parameters)) {
         return { ...parameters };
     }
-
-    if (Array.isArray(parameters)) {
-        const defaults = {};
-        parameters.forEach(entry => {
-            if (!isPlainObject(entry)) {
-                return;
-            }
-
-            const name = typeof entry.name === 'string' ? entry.name.trim() : '';
-            if (!name) {
-                return;
-            }
-
-            if (Object.prototype.hasOwnProperty.call(entry, 'default')) {
-                defaults[name] = entry.default;
-            } else if (Object.prototype.hasOwnProperty.call(entry, 'value')) {
-                defaults[name] = entry.value;
-            } else {
-                defaults[name] = 'unknown';
-            }
-        });
-        return defaults;
-    }
-
     return {};
 }
 
 /**
- * Extracts parent-provided parameter overrides from module component.
- * Supported fields: component.moduleParams, component.parameters.
- * @param {Object} component
+ * Resolves full model payload using top-level model defaults and runtime overrides.
+ * Merge order: model.parameters defaults -> runtime parameter overrides.
+ * @param {Object} model
+ * @param {Object<string, unknown>} [runtimeParams]
  * @returns {Object<string, unknown>}
  */
-function extractModuleOverrideParameters(component) {
-    const overrides = {};
-
-    if (isPlainObject(component?.moduleParams)) {
-        Object.assign(overrides, component.moduleParams);
+function resolveModelParameters(model, runtimeParams = {}) {
+    if (!isPlainObject(model)) {
+        return model;
     }
 
-    if (isPlainObject(component?.parameters)) {
-        Object.assign(overrides, component.parameters);
+    const defaultsRaw = extractModelDefaultParameters(model);
+    const defaultsResolved = resolveTemplateValues(defaultsRaw, runtimeParams);
+    const effectiveParams = {
+        ...(isPlainObject(defaultsResolved) ? defaultsResolved : {}),
+        ...(isPlainObject(runtimeParams) ? runtimeParams : {})
+    };
+
+    if (!Object.keys(effectiveParams).length) {
+        return model;
     }
 
-    return overrides;
+    return resolveTemplateValues(model, effectiveParams);
+}
+
+/**
+ * Returns runtime parameters already attached to a model (module drill-down context).
+ * @param {Object|null|undefined} model
+ * @returns {Object<string, unknown>}
+ */
+function getModelRuntimeParameters(model) {
+    const params = model?.settings?.moduleRuntime?.params;
+    return isPlainObject(params) ? { ...params } : {};
 }
 
 /**
  * Extracts module call parameter overrides from a connection.
- * Supported fields: connection.moduleParams, connection.moduleCallParams.
+ * Supported field: connection.parameters.
  * @param {Object|null} connection
  * @returns {Object<string, unknown>}
  */
@@ -575,46 +567,29 @@ function extractModuleOverrideParametersFromConnection(connection) {
         return overrides;
     }
 
-    if (isPlainObject(connection.moduleParams)) {
-        Object.assign(overrides, connection.moduleParams);
-    }
-
-    if (isPlainObject(connection.moduleCallParams)) {
-        Object.assign(overrides, connection.moduleCallParams);
+    if (isPlainObject(connection.parameters)) {
+        Object.assign(overrides, connection.parameters);
     }
 
     return overrides;
 }
 
 /**
- * Resolves final parameter map for a module invocation.
- * Merge order: inherited parent params -> module defaults -> parent overrides.
- * @param {Object} moduleDef
- * @param {Object} component
+ * Resolves final runtime parameters for a module invocation.
+ * Merge order: inherited parent runtime parameters -> connection call overrides.
  * @param {Object|null} callConnection
  * @returns {Object<string, unknown>}
  */
-function resolveModuleInvocationParameters(moduleDef, component, callConnection) {
+function resolveModuleInvocationParameters(callConnection) {
     const inherited = getCurrentModuleRuntimeParameters();
-    const defaultsRaw = extractModuleDefaultParameters(moduleDef);
-    const defaultsResolved = resolveTemplateValues(defaultsRaw, inherited);
-
-    const componentOverridesRaw = extractModuleOverrideParameters(component);
-    const componentOverridesResolved = resolveTemplateValues(componentOverridesRaw, {
-        ...inherited,
-        ...(isPlainObject(defaultsResolved) ? defaultsResolved : {})
-    });
 
     const connectionOverridesRaw = extractModuleOverrideParametersFromConnection(callConnection);
     const connectionOverridesResolved = resolveTemplateValues(connectionOverridesRaw, {
-        ...inherited,
-        ...(isPlainObject(defaultsResolved) ? defaultsResolved : {})
+        ...inherited
     });
 
     return {
         ...inherited,
-        ...(isPlainObject(defaultsResolved) ? defaultsResolved : {}),
-        ...(isPlainObject(componentOverridesResolved) ? componentOverridesResolved : {}),
         ...(isPlainObject(connectionOverridesResolved) ? connectionOverridesResolved : {})
     };
 }
@@ -630,7 +605,15 @@ function resolveModuleInvocationParameters(moduleDef, component, callConnection)
  * @returns {Object}
  */
 function applyModuleParametersToModel(model, resolvedParams, moduleDef, component, callSelection = null) {
-    const resolvedModel = resolveTemplateValues(model, resolvedParams);
+    const runtimeParams = isPlainObject(resolvedParams) ? { ...resolvedParams } : {};
+    const defaultsRaw = extractModelDefaultParameters(model);
+    const defaultsResolved = resolveTemplateValues(defaultsRaw, runtimeParams);
+    const effectiveParams = {
+        ...(isPlainObject(defaultsResolved) ? defaultsResolved : {}),
+        ...runtimeParams
+    };
+
+    const resolvedModel = resolveTemplateValues(model, effectiveParams);
     if (!isPlainObject(resolvedModel)) {
         return model;
     }
@@ -652,7 +635,7 @@ function applyModuleParametersToModel(model, resolvedParams, moduleDef, componen
             labelModuleCall: getConnectionModuleCallLabel(callSelection.connection),
             groupName: callSelection.groupName || null
         } : null,
-        params: resolvedParams
+        params: effectiveParams
     };
 
     return resolvedModel;
@@ -1006,7 +989,7 @@ function enterModuleFromComponent(component, callSelection = null) {
     moduleNavigationState.isNavigating = true;
     updateModuleNavigationUI();
 
-    const resolvedParams = resolveModuleInvocationParameters(moduleDef, component, callSelection?.connection || null);
+    const resolvedParams = resolveModuleInvocationParameters(callSelection?.connection || null);
 
     return fetchModelFromFile(resolvedFile)
         .then(rawModuleModel => {
@@ -3977,7 +3960,9 @@ function startDataFlowOnConnection(connObject, options = {}) {
  */
 function loadModelFromObject(model) {
     clearScene();
-    modelData = normalizeModelVisibilityFlags(model);
+    const runtimeParams = getModelRuntimeParameters(model);
+    const modelWithResolvedParameters = resolveModelParameters(model, runtimeParams);
+    modelData = normalizeModelVisibilityFlags(modelWithResolvedParameters);
     clearDeveloperSelection();
     updateDeveloperModeUI();
 
@@ -4095,6 +4080,7 @@ function buildModelListUI() {
 
         li.addEventListener('click', () => {
             loadModelFromFile(entry.file);
+            panel.style.display = 'none';
         });
 
         ul.appendChild(li);

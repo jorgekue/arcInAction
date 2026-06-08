@@ -265,7 +265,7 @@ Beispiel:
 
 ## 5.7 Root-Bereich modules
 
-Der Root-Bereich `modules` definiert wiederverwendbare Child-Modelle und deren Defaults.
+Der Root-Bereich `modules` definiert wiederverwendbare Child-Modelle.
 
 ```json
 {
@@ -273,12 +273,7 @@ Der Root-Bereich `modules` definiert wiederverwendbare Child-Modelle und deren D
     {
       "id": "M_REGISTRATION",
       "name": "Registration Module",
-      "file": "modules/registration-module.json",
-      "parameters": {
-        "tenant": "unknown",
-        "channel": "unknown",
-        "apiProtocol": "unknown"
-      }
+      "file": "modules/registration-module.json"
     }
   ]
 }
@@ -288,8 +283,10 @@ Der Root-Bereich `modules` definiert wiederverwendbare Child-Modelle und deren D
 
 Fuer einen Modulaufruf werden effektive Runtime-Parameter in dieser Reihenfolge zusammengefuehrt:
 1. geerbte Parent-Runtime-Parameter
-2. Modul-Defaults (`modules[].parameters`)
-3. Modulaufruf-Overrides an der ausgewaehlten Connection (`moduleCallParams` oder `moduleParams`)
+2. Child-Modell-Defaults (`parameters`-Block im referenzierten Modul-JSON)
+3. Modulaufruf-Overrides an der ausgewaehlten Connection (`parameters`)
+
+Default-Parameter an Moduldefinitionen (`modules[].parameters`) und an Modul-Komponenten werden nicht mehr unterstuetzt.
 
 Template-Platzhalter im Child-JSON werden ueber `{{paramName}}` aufgeloest.
 Aufgeloeste Runtime-Werte stehen unter `settings.moduleRuntime.params` zur Verfuegung.
@@ -304,7 +301,7 @@ Es werden nur aktuell sichtbare Connections beruecksichtigt (Filterung ueber Con
 Nutze diese optionalen Connection-Attribute:
 
 - `labelModuleCall (string)`: Anzeige-Label fuer die Auswahl im Modulaufruf-Popup.
-- `moduleCallParams (object)`: aufrufspezifische Runtime-Parameter fuer den Modulaufruf.
+- `parameters (object)`: aufrufspezifische Runtime-Parameter fuer den Modulaufruf.
 
 Beispiel:
 
@@ -315,7 +312,7 @@ Beispiel:
   "to": "MOD_REG",
   "label": "Delegate to module",
   "labelModuleCall": "Portal registration",
-  "moduleCallParams": {
+  "parameters": {
     "tenant": "bkv-de",
     "channel": "portal",
     "apiProtocol": "HTTPS/REST"
