@@ -143,7 +143,7 @@ Zur Hilfestellung bei der Modellierung kann ein **Grid** eingeblendet werden (Ch
 
 _Bild: Grid für Modellierung._
 
-## Interaktiven Edit-Modus fuer Connections
+## Interaktiven Edit-Modus für Connections
 
 Neben dem deklarativen JSON‑Ansatz gibt es einen **interaktiven Edit‑Modus** im Viewer.
 

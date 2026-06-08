@@ -114,8 +114,8 @@ Standard‑Attribute einer Komponente:
 Spezielle Attribute für manche Typen:
 
 - `orientation (string, optional)`: Ausrichtung bestimmter Formen (z.B. "z" bei scheduler).
-- `moduleRef (string, optional)`: Pflicht fuer `type: "module"`; referenziert einen Eintrag in root `modules`.
-- Runtime-Parameter fuer den Modulaufruf werden an der aufrufenden Connection konfiguriert (siehe Abschnitt 6.2).
+- `moduleRef (string, optional)`: Pflicht für `type: "module"`; referenziert einen Eintrag in root `modules`.
+- Runtime-Parameter für den Modulaufruf werden an der aufrufenden Connection konfiguriert (siehe Abschnitt 6.2).
 
 ---
 # 5. Komponententypen im Beispielmodell
@@ -257,10 +257,7 @@ Beispiel:
 }
 ```
 
-- Darstellung: service-aehnliche Box mit expliziter Modulkennzeichnung im Viewer.
-- Interaktion: Doppelklick oeffnet das referenzierte Modulmodell (Drill-Down).
-- Ruecksprung: `Back module` Button im View-Panel oder `Backspace`/`Escape`, wenn keine Connection selektiert ist.
-- Hinweis Edit-Modus: Bei selektierter Connection behalten `Escape`, `Backspace` und `Delete` ihre Edit-Bedeutung.
+- Darstellung: service-ähnliche Box mit expliziter Modulkennzeichnung im Viewer.
 
 ---
 
@@ -280,29 +277,29 @@ Der Root-Bereich `modules` definiert wiederverwendbare Child-Modelle.
 }
 ```
 
-### Reihenfolge der Parameteraufloesung
+### Reihenfolge der Parameterauflösung
 
-Fuer einen Modulaufruf werden effektive Runtime-Parameter in dieser Reihenfolge zusammengefuehrt:
+Für einen Modulaufruf werden effektive Runtime-Parameter in dieser Reihenfolge zusammengeführt:
 1. geerbte Parent-Runtime-Parameter
 2. Child-Modell-Defaults (`parameters`-Block im referenzierten Modul-JSON)
-3. Modulaufruf-Overrides an der ausgewaehlten Connection (`parameters`)
+3. Modulaufruf-Overrides an der ausgewählten Connection (`parameters`)
 
-Default-Parameter an Moduldefinitionen (`modules[].parameters`) und an Modul-Komponenten werden nicht mehr unterstuetzt.
+Default-Parameter an Moduldefinitionen (`modules[].parameters`) und an Modul-Komponenten werden nicht mehr unterstützt.
 
-Template-Platzhalter im Child-JSON werden ueber `{{paramName}}` aufgeloest.
-Aufgeloeste Runtime-Werte stehen unter `settings.moduleRuntime.params` zur Verfuegung.
+Template-Platzhalter im Child-JSON werden über `{{paramName}}` aufgelöst.
+Aufgelöste Runtime-Werte stehen unter `settings.moduleRuntime.params` zur Verfügung.
 
 ---
 
 ## 6.2 Modulaufruf-Attribute an Connections
 
-Wenn eine Modul-Komponente mehrere moegliche Aufrufe hat, zeigt der Viewer beim Doppelklick ein Auswahl-Popup.
-Es werden nur aktuell sichtbare Connections beruecksichtigt (Filterung ueber ConnectionGroups gilt).
+Wenn eine Modul-Komponente mehrere mögliche Aufrufe hat, zeigt der Viewer beim Doppelklick ein Auswahl-Popup.
+Es werden nur aktuell sichtbare Connections berücksichtigt (Filterung über ConnectionGroups gilt).
 
 Nutze diese optionalen Connection-Attribute:
 
-- `labelModuleCall (string)`: Anzeige-Label fuer die Auswahl im Modulaufruf-Popup.
-- `parameters (object)`: aufrufspezifische Runtime-Parameter fuer den Modulaufruf.
+- `labelModuleCall (string)`: Anzeige-Label für die Auswahl im Modulaufruf-Popup.
+- `parameters (object)`: aufrufspezifische Runtime-Parameter für den Modulaufruf.
 
 Beispiel:
 
