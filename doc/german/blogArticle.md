@@ -47,7 +47,8 @@ Neben der deklarativen Beschreibung gibt es einen interaktiven Edit-Modus für C
 
 ## Connections und Datenfluss-Animation
 
-Connections bilden Kommunikationsbeziehungen zwischen Komponenten ab und dienen gleichzeitig als Grundlage für die Datenfluss-Animation. Dabei werden Richtung, Verlauf und Metainformationen einer Verbindung sichtbar gemacht, sodass sowohl technische als auch fachliche Gespräche auf ein gemeinsames Bild referenzieren können.
+Connections bilden Kommunikationsbeziehungen zwischen Komponenten ab und dienen gleichzeitig als Grundlage für die Datenfluss-Animation. Dabei werden Richtung, Verlauf und Metainformationen einer Verbindung sichtbar gemacht, sodass sowohl technische als auch fachliche Gespräche auf ein gemeinsames Bild referenzieren können. 
+Aus den angezeigten Metainformationen heraus kann auf eine optional hinterlegte Infoseite zu der betreffenden Schnittstelle gesprungen werden.
 
 Für größere Modelle werden Verbindungen in Gruppen organisiert. Das erlaubt es, gezielt auf einzelne Gruppen zu fokussieren und komplexe Diagramme schrittweise zu erklären, statt alles gleichzeitig zu zeigen.
 

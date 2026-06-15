@@ -52,7 +52,7 @@ Animation script:
 - Data flow of `user registration` triggered via Play button.
 - Now focusing on the ConnectionGroups `creating orders` and `processing payments`
 - Data flow triggered via Play button.
-- The current connection step shows details (id, protocol, from, to, label) in the top right panel.
+- The current connection step shows details (id incl. optional link, protocol, from, to, label) in the top right panel.
 - Grid toggled on and off.
 - Model is changed.
 - Mouse interactions: rotate, pan, zoom
@@ -232,8 +232,11 @@ Each connection describes a connection between two components. Important aspects
   - Optionally, a direct connection can additionally be routed via a list of 3D points (*Pathpoints*) to, for example, make an arc around other components or emphasize certain levels in the architecture.
 - **Further communication details**:
   - `id` can optionally be set with an interface ID.
+  - `link` can optionally be provided and points to an interface detail page (opens in a new browser tab).
   - `protocol` can optionally be used for protocol/technology details (e.g., **REST/HTTPS**, **JDBC**).
   - An optional `label` serves to label the data flow animation.
+
+The display in the right detail panel makes this metadata transparent for each connection step. This helps to classify communication steps directly during reviews. If a `link` is set, users can jump directly from the panel to the corresponding interface detail page.
 
 > A detailed description of all connection attributes (incl. `begin`, `end`, `points`) can be found in the **Modeling Instructions for aia Models**, see references below.
 

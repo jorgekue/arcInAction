@@ -47,7 +47,7 @@ Alongside declarative modeling, there is an interactive edit mode for connection
 
 ## Connections and Data Flow Animation
 
-Connections represent communication relationships between components and also serve as the basis for data flow animation. Direction, routing, and metadata of a connection are made visible, so both technical and business-oriented discussions can reference a shared visual model.
+Connections represent communication relationships between components and also serve as the basis for data flow animation. Direction, routing, and metadata of a connection are made visible, so both technical and business-oriented discussions can reference a shared visual model. From the displayed metadata, users can jump to an optionally stored info page for the respective interface.
 
 For larger models, connections are organized into groups. This makes it possible to focus on selected groups and explain complex diagrams step by step instead of showing everything at once.
 
