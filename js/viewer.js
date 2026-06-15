@@ -2551,7 +2551,7 @@ function showInterfaceDetails(connection) {
         return;
     }
 
-    const id = formatInterfaceValue(connection.id || '-');
+    const id = connection.id ? formatInterfaceIdWithLink(connection.id, connection.link) : '-';
     const protocol = formatInterfaceValue(connection.protocol || '-');
     const from = formatInterfaceValue(connection.from || '-');
     const to = formatInterfaceValue(connection.to || '-');
@@ -2581,6 +2581,21 @@ function showInterfaceDetails(connection) {
             </tr>
         </table>
       `;
+}
+
+/**
+ * Formats an interface ID as a clickable link if a URL is provided, otherwise as plain text.
+ * @param {string} id - Interface ID
+ * @param {string|undefined|null} link - Optional URL for the interface documentation
+ * @returns {string} HTML string with link or plain formatted ID
+ */
+function formatInterfaceIdWithLink(id, link) {
+    const sanitizedId = formatInterfaceValue(id || '-');
+    if (!link || typeof link !== 'string' || link.trim().length === 0) {
+        return sanitizedId;
+    }
+    const sanitizedLink = link.trim().replace(/"/g, '&quot;');
+    return `<a href="${sanitizedLink}" target="_blank" class="interface-id-link">${sanitizedId}</a>`;
 }
 
 /**
