@@ -666,12 +666,15 @@ function getModuleCallDisplayLabel(entry) {
 /**
  * Collects visible module call connections for a module component.
  * Only visible connections are considered, therefore active connection group filtering is respected.
- * @param {string} componentId
+ * @param {Object} component
  * @returns {Array<{connection: Object, groupName: string}>}
  */
-function getVisibleModuleCallConnections(componentId) {
+function getVisibleModuleCallConnections(component) {
+    const componentId = component?.id;
+    const componentModuleRef = typeof component?.moduleRef === 'string' ? component.moduleRef.trim() : '';
     const incomingCalls = [];
     const fallbackCalls = [];
+    const incomingExplicitModuleCalls = [];
     if (!componentId) {
         return incomingCalls;
     }
@@ -703,12 +706,23 @@ function getVisibleModuleCallConnections(componentId) {
 
         if (isIncomingCall) {
             incomingCalls.push(entry);
+
+            const connectionType = typeof connection.type === 'string' ? connection.type.trim().toLowerCase() : '';
+            const connectionModuleRef = typeof connection.moduleRef === 'string' ? connection.moduleRef.trim() : '';
+            const isExplicitModuleCall = connectionType === 'module' || connectionModuleRef.length > 0;
+            const isMatchingModuleRef = !componentModuleRef || !connectionModuleRef || connectionModuleRef === componentModuleRef;
+            if (isExplicitModuleCall && isMatchingModuleRef) {
+                incomingExplicitModuleCalls.push(entry);
+            }
         } else {
             fallbackCalls.push(entry);
         }
     });
 
-    const selectedCalls = incomingCalls.length > 0 ? incomingCalls : fallbackCalls;
+    // Prefer explicit module calls when present; fallback keeps older models usable.
+    const selectedCalls = incomingExplicitModuleCalls.length > 0
+        ? incomingExplicitModuleCalls
+        : (incomingCalls.length > 0 ? incomingCalls : fallbackCalls);
 
     selectedCalls.sort((a, b) => {
         const orderA = Number.isFinite(Number(a.connection?.order)) ? Number(a.connection.order) : Number.MAX_SAFE_INTEGER;
@@ -1105,7 +1119,7 @@ async function onModuleComponentDoubleClick(event) {
 
     event.preventDefault();
 
-    const callOptions = getVisibleModuleCallConnections(component.id);
+    const callOptions = getVisibleModuleCallConnections(component);
     const selectedCall = await selectModuleCallForComponent(component, callOptions);
     if (callOptions.length > 1 && !selectedCall) {
         return;
@@ -2537,7 +2551,7 @@ function showInterfaceDetails(connection) {
         return;
     }
 
-    const id = formatInterfaceValue(connection.id || '-');
+    const id = connection.id ? formatInterfaceIdWithLink(connection.id, connection.link) : '-';
     const protocol = formatInterfaceValue(connection.protocol || '-');
     const from = formatInterfaceValue(connection.from || '-');
     const to = formatInterfaceValue(connection.to || '-');
@@ -2567,6 +2581,21 @@ function showInterfaceDetails(connection) {
             </tr>
         </table>
       `;
+}
+
+/**
+ * Formats an interface ID as a clickable link if a URL is provided, otherwise as plain text.
+ * @param {string} id - Interface ID
+ * @param {string|undefined|null} link - Optional URL for the interface documentation
+ * @returns {string} HTML string with link or plain formatted ID
+ */
+function formatInterfaceIdWithLink(id, link) {
+    const sanitizedId = formatInterfaceValue(id || '-');
+    if (!link || typeof link !== 'string' || link.trim().length === 0) {
+        return sanitizedId;
+    }
+    const sanitizedLink = link.trim().replace(/"/g, '&quot;');
+    return `<a href="${sanitizedLink}" target="_blank" class="interface-id-link">${sanitizedId}</a>`;
 }
 
 /**

@@ -378,6 +378,7 @@ Standard‑Attribute:
 - `from (string, Pflicht)`: ID der Quell‑Komponente (z.B. "S2").
 - `to (string, Pflicht)`: ID der Ziel‑Komponente (z.B. "Q1").
 - `id (string, optional)`: Interface-/Verbindungs-Identifier (z.B. "Dummy", "IMS-1.11").
+- `link (string, optional)`: Link auf Interface-Dokumentation/Detailseite. Wenn gesetzt, ist die ID im Interface-Panel klickbar und wird in einem neuen Browser-Tab geöffnet.
 - `protocol (string, optional)`: Protokoll-/Technologieangabe (z.B. "REST/HTTPS", "amqp").
 - `direction (string, optional)`: Richtung des Datenflusses:
   - `"outbound"`: Daten von from → to (Default).
@@ -582,7 +583,7 @@ Components with a type that has no entry in `typeStyles` are assigned a default 
 ## 8.1 IDs und Labels
 
 - IDs (id) eindeutig und stabil wählen, da connections darauf verweisen.
-- Labels (label) kurz halten, bei Bedarf mit \n Unbruch erzwingen, Beispiel: `"User\nService"`
+- Labels (label) kurz halten, bei Bedarf mit \n Umbruch erzwingen, Beispiel: `"User\nService"`
 
 ## 8.2 Layer und Positionierung
 

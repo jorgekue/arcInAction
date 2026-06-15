@@ -44,6 +44,19 @@ body {
     white-space: nowrap;
 }
 
+#details .interface-id-link {
+    color: #0066cc;
+    text-decoration: none;
+    cursor: pointer;
+    border-bottom: 1px solid #0066cc;
+    transition: color 0.2s, background-color 0.2s;
+}
+
+#details .interface-id-link:hover {
+    color: #0052a3;
+    background-color: rgba(0, 102, 204, 0.1);
+}
+
 #controls {
     position: absolute;
     right: 10px;

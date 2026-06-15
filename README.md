@@ -1,13 +1,14 @@
-# architecture.0 in action (aia)
+# architecture in action (aia)
 
 A 3D/4D visualization tool for software architectures that combines component diagrams with sequence diagrams through animated data flows.
 
-Current version: 3.0
+Current version: 3.1
 
 ## Release History
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 3.1 | 2026-06-15 | Interface link support in connection details: `id` can reference local or remote documentation via `link` (opens in new tab). Documentation (About, modeling instructions, blog) aligned. |
 | 3.0 | 2026-06-08 | Module support for reusable model parts: drill-down into modules, module call selection, runtime parameter passing via connection `parameters`, and return navigation from module context. Sample models were extended and aligned for this feature (`model.json`, `modulePrint.json`). |
 | 2.0 | 2026-04-11 | Major productivity release for architecture teams: interactive connection fine-tuning directly in the viewer significantly reduces manual JSON editing effort and accelerates model refinement in workshops and review sessions. New edit capabilities (insert/move/remove path points, reliable undo/redo, keyboard workflow) improve modeling quality and iteration speed, while settings-based control (`developerMode`, `undoRedoDepth`) keeps operational use and expert editing cleanly separated. Viewer defaults were refined for clearer presentations (`animateComponents=false`, `showComponentPosition=false`). Documentation was fully aligned in German and English, including a dedicated interactive modelling guide. |
 | 1.2 | 2026-03-10 | Schema simplification in models and viewer: connections now use `id` and `protocol`; removed connection `type` and `throughput`; removed component `metadata`; flow panel refinements (slider below buttons, 3-line current component area); improved source/target ring visibility and actor ring sizing; documentation updated (EN + DE). |

@@ -1,4 +1,4 @@
-﻿{
+{
     "parameters": {
         "actor": "A",
         "width_actor": false,
@@ -159,7 +159,8 @@
                     "direction": "outbound",
                     "order": 101,
                     "label": "user data1",
-                    "id": "Dummy"
+                    "id": "U1-UI1",
+                    "link": "interfacesInfos/interfaceInfo-U1-UI1.html"
                 },
                 {
                     "from": "UI1",
@@ -180,7 +181,8 @@
                             "z": 3.5
                         }
                     ],
-                    "id": "Dummy"
+                    "id": "UI1-S1",
+                    "link": "interfacesInfos/interfaceInfo-UI1-S1.html"
                 },
                 {
                     "from": "S1",
@@ -189,7 +191,8 @@
                     "direction": "outbound",
                     "order": 103,
                     "label": "user data",
-                    "id": "Dummy"
+                    "id": "S1-DB1",
+                    "link": "interfacesInfos/interfaceInfo-S1-DB1.html"
                 },
                 {
                     "from": "S1",
@@ -198,7 +201,7 @@
                     "direction": "outbound",
                     "order": 104,
                     "label": "email data user registration",
-                    "id": "Dummy",
+                    "id": "S1-M1",
                     "begin": "y+",
                     "end": "y+",
                     "points": [
@@ -219,7 +222,8 @@
                         "visibleUserService": true,
                         "visibleOrderService": false,
                         "printData": "user registration"
-                    }
+                    },
+                    "link": "interfacesInfos/interfaceInfo-S1-M1.html"
                 },
                 {
                     "from": "M1",
@@ -228,7 +232,8 @@
                     "direction": "outbound",
                     "order": 105,
                     "label": "email user registration",
-                    "id": "Dummy",
+                    "id": "M1-U1",
+                    "link": "interfacesInfos/interfaceInfo-M1-U1.html",
                     "begin": "z+",
                     "end": "x+",
                     "points": [
@@ -253,7 +258,8 @@
                     "direction": "outbound",
                     "order": 201,
                     "label": "orders",
-                    "id": "Dummy"
+                    "id": "U1-UI1",
+                    "link": "interfacesInfos/interfaceInfo-U1-UI1.html"
                 },
                 {
                     "from": "UI1",
@@ -274,7 +280,8 @@
                             "z": 3.5
                         }
                     ],
-                    "id": "Dummy"
+                    "id": "UI1-S2",
+                    "link": "interfacesInfos/interfaceInfo-UI1-S2.html"
                 },
                 {
                     "from": "S2",
@@ -283,7 +290,8 @@
                     "direction": "outbound",
                     "order": 203,
                     "label": "orders",
-                    "id": "Dummy"
+                    "id": "S2-DB2",
+                    "link": "interfacesInfos/interfaceInfo-S2-DB2.html"
                 },
                 {
                     "from": "S2",
@@ -310,7 +318,8 @@
                             "z": -1
                         }
                     ],
-                    "id": "Dummy"
+                    "id": "S2-Q1",
+                    "link": "interfacesInfos/interfaceInfo-S2-Q1.html"
                 },
                 {
                     "from": "S2",
@@ -319,7 +328,7 @@
                     "direction": "outbound",
                     "order": 205,
                     "label": "email data ordering",
-                    "id": "Dummy",
+                    "id": "S2-M1",
                     "begin": "y+",
                     "end": "y+",
                     "points": [
@@ -340,7 +349,8 @@
                         "visibleUserService": false,
                         "visibleOrderService": true,
                         "printData": "ordering"
-                    }
+                    },
+                    "link": "interfacesInfos/interfaceInfo-S2-M1.html"
                 },
                 {
                     "from": "M1",
@@ -349,7 +359,7 @@
                     "direction": "outbound",
                     "order": 206,
                     "label": "email ordering",
-                    "id": "Dummy",
+                    "id": "M1-U1",
                     "begin": "z+",
                     "end": "x+",
                     "points": [
@@ -358,7 +368,8 @@
                             "y": 0,
                             "z": 8
                         }
-                    ]
+                    ],
+                    "link": "interfacesInfos/interfaceInfo-M1-U1.html"
                 }
             ]
         },
@@ -394,7 +405,8 @@
                             "z": 2
                         }
                     ],
-                    "id": "Dummy"
+                    "id": "SCHED1-S3",
+                    "link": "interfacesInfos/interfaceInfo-SCHED1-S3.html"
                 },
                 {
                     "from": "S3",
@@ -423,7 +435,8 @@
                             "z": -3
                         }
                     ],
-                    "id": "Dummy"
+                    "id": "S3-Q1",
+                    "link": "interfacesInfos/interfaceInfo-S3-Q1.html"
                 }
             ]
         }

@@ -52,7 +52,7 @@ Skript der Animation:
 - Datenfluss der `user registration` per Play-Button ausgelöst.
 - Nun Fokussierung auf die ConnectionGroup `creating orders` und `processing payments`
 - Datenfluss per Play-Button ausgelöst.
-- Im rechten oberen Panel werden pro aktuellem Verbindungsschritt Details angezeigt (id, protocol, from, to, label).
+- Im rechten oberen Panel werden pro aktuellem Verbindungsschritt Details angezeigt (id inkl. optionalem Link, protocol, from, to, label).
 - Grid an- und ausgeschaltet.
 - Modell wird geändert.
 - Mausinteraktionen: Drehen, verschieben, zoomen
@@ -234,8 +234,11 @@ Jede Connection beschreibt eine Verbindung zwischen zwei Komponenten. Wichtige A
   - Optional kann eine direkte Verbindung zusätzlich über eine Liste von 3D‑Punkten (*Pathpoints*) geführt werden, um z.B. einen Bogen um andere Komponenten herum zu machen oder bestimmte Ebenen in der Architektur zu betonen.
 - **weitere Details zur Kommunikation**:
   - `id` kann optional mit einer Schnittstellen-ID belegt werden.
+  - `link` kann optional hinterlegt werden und verweist auf eine Detailseite zur Schnittstelle (Öffnung in einem neuen Browser-Tab).
   - `protocol` kann optional für Protokoll-/Technologieangaben genutzt werden (z.B. **REST/HTTPS**, **JDBC**).
   - Ein optionales `label` dient zur Beschriftung bei der Datenflußanimation.
+
+Die Anzeige im rechten Detail-Panel macht diese Metainformationen pro Verbindungsschritt transparent. Damit lassen sich Kommunikationsschritte im Review direkt fachlich einordnen. Ist ein `link` gesetzt, kann aus der Anzeige sofort in die zugehörige Interface-Detailseite gesprungen werden.
 
 > Eine detaillierte Beschreibung aller Connection‑Attribute findet sich in der **Modellierungsanleitung für aia‑Modelle**, siehe Referenzen unten.
 

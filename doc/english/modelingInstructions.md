@@ -258,9 +258,6 @@ Example:
 ```
 
 - Representation: service-like box with explicit module marker in viewer.
-- Interaction: double-click enters referenced module model (drill-down).
-- Return navigation: `Back module` button in view panel, or `Backspace`/`Escape` when no connection is selected.
-- Edit-mode note: with a selected connection, `Escape`, `Backspace`, and `Delete` keep their edit behavior.
 
 ---
 
@@ -381,6 +378,7 @@ Standard attributes:
 - `from (string, required)`: ID of the source component (e.g., "S2").
 - `to (string, required)`: ID of the target component (e.g., "Q1").
 - `id (string, optional)`: Interface/connection identifier (e.g., "Dummy", "IMS-1.11").
+- `link (string, optional)`: Link to interface documentation/details page. If present, the ID in the interface panel is clickable and opens in a new browser tab.
 - `protocol (string, optional)`: Protocol/technology detail (e.g., "REST/HTTPS", "amqp").
 - `direction (string, optional)`: Direction of data flow:
   - `"outbound"`: Data from from → to (default).
