@@ -277,6 +277,10 @@ Der Root-Bereich `modules` definiert wiederverwendbare Child-Modelle.
 }
 ```
 
+**Hinweise zu relativen Modulpfaden** (`modules[].file`):
+- Wenn Modelle von einem Web-Server bereitgestellt werden, werden relative Pfade relativ zum Verzeichnis der gerade geladenen Modell-Datei aufgelöst.
+- Beim Laden eines Modells über den "Load model"-Button werden relative Modul-Pfade aus dem Verzeichnis der hochgeladenen Modell-Datei aufgelöst (per Standard-Web-Fetch).
+
 ### Reihenfolge der Parameterauflösung
 
 Für einen Modulaufruf werden effektive Runtime-Parameter in dieser Reihenfolge zusammengeführt:

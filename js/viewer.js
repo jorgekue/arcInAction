@@ -93,6 +93,15 @@ const modelFiles = [...defaultModelFiles];
 /** @type {string} Currently loaded model file name */
 let currentModelFile = 'model.json';
 
+/** @type {Map<string, File>} Uploaded local model files for resolving relative module references */
+const uploadedLocalModelFiles = new Map();
+
+/** @type {boolean} True while current model context originates from local file upload */
+let isLocalUploadContext = false;
+
+/** @type {string} Base directory path extracted from uploaded parent model file (for relative module resolution) */
+let uploadedModelBaseDirectory = '';
+
 /** @type {{stack: Array<{model: Object, modelFile: string, groupSelection: {byOrderName: Map<string, boolean>, byName: Map<string, boolean>}|null, currentConnectionIndex: number, currentSelectedConnectionIndex: number, cameraPosition: THREE.Vector3, cameraTarget: THREE.Vector3, label: string}>, isNavigating: boolean}} Module drill-down navigation state */
 const moduleNavigationState = {
     stack: [],
@@ -238,6 +247,104 @@ function resolvePathFromCurrentModel(targetPath) {
     const basePath = lastSlash >= 0 ? sourceFile.slice(0, lastSlash + 1) : '';
 
     return normalizeRelativePath(`${basePath}${rawTarget}`);
+}
+
+/**
+ * Registers uploaded local JSON files for module lookup.
+ * Stores all files by normalized name for lazy loading.
+ * @param {ArrayLike<File>|null|undefined} files All uploaded model files
+ */
+function registerUploadedLocalModelFiles(files) {
+    uploadedLocalModelFiles.clear();
+    uploadedModelBaseDirectory = '';
+
+    const fileList = Array.from(files || []);
+    if (!fileList.length) {
+        return;
+    }
+
+    fileList.forEach(file => {
+        const fileName = typeof file?.name === 'string' ? file.name.trim() : '';
+        if (!fileName || !/\.json$/i.test(fileName)) {
+            return;
+        }
+
+        const normalizedName = normalizeRelativePath(fileName);
+        if (normalizedName) {
+            uploadedLocalModelFiles.set(normalizedName, file);
+            uploadedLocalModelFiles.set(`./${normalizedName}`, file);
+        }
+
+        const relativePath = typeof file?.webkitRelativePath === 'string'
+            ? normalizeRelativePath(file.webkitRelativePath)
+            : '';
+        if (relativePath) {
+            uploadedLocalModelFiles.set(relativePath, file);
+            uploadedLocalModelFiles.set(`./${relativePath}`, file);
+        }
+    });
+}
+
+/**
+ * Resolves a local uploaded model file by path.
+ * Tries direct lookup first, then relative to extracted base directory.
+ * @param {string} filePath
+ * @returns {File|null}
+ */
+function resolveUploadedLocalModelFile(filePath) {
+    const normalized = normalizeRelativePath(filePath || '');
+    if (!normalized) {
+        return null;
+    }
+
+    let result = uploadedLocalModelFiles.get(normalized)
+        || uploadedLocalModelFiles.get(`./${normalized}`)
+        || null;
+
+    if (result) {
+        return result;
+    }
+
+    if (uploadedModelBaseDirectory) {
+        const relativeToBase = normalizeRelativePath(uploadedModelBaseDirectory + normalized);
+        result = uploadedLocalModelFiles.get(relativeToBase)
+            || uploadedLocalModelFiles.get(`./${relativeToBase}`)
+            || null;
+        if (result) {
+            return result;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Reads and parses a locally uploaded JSON model file.
+ * @param {File} file
+ * @returns {Promise<Object>}
+ */
+function readJsonFromLocalFile(file) {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error('Missing local file for model loading.'));
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = event => {
+            try {
+                const payload = typeof event?.target?.result === 'string' ? event.target.result : '';
+                const model = JSON.parse(payload);
+                resolve(model);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = () => {
+            reject(reader.error || new Error('Could not read local model file.'));
+        };
+        reader.readAsText(file);
+    });
 }
 
 /**
@@ -4069,6 +4176,7 @@ function setupConnectionGroupsFromModel(model) {
  */
 function loadModelFromFile(fileName) {
     currentModelFile = fileName;
+    isLocalUploadContext = false;
 
     return fetchModelFromFile(fileName)
         .then(model => {
@@ -4087,9 +4195,27 @@ function loadModelFromFile(fileName) {
  * @returns {Promise<Object>} Promise with parsed model object
  */
 function fetchModelFromFile(fileName) {
+    const normalizedFileName = normalizeRelativePath(String(fileName || '').trim());
+
+    // In local upload context: try local files first
+    if (isLocalUploadContext && normalizedFileName) {
+        const localFile = resolveUploadedLocalModelFile(normalizedFileName);
+        if (localFile) {
+            return readJsonFromLocalFile(localFile);
+        }
+
+        // File not found in uploaded files
+        const uploadedNames = Array.from(uploadedLocalModelFiles.keys()).join(', ');
+        console.warn(`Module file '${fileName}' not found in uploaded files.${uploadedNames ? ` Uploaded: ${uploadedNames}` : ''}`);
+    }
+
+    // Fall back to server fetch
     return fetch(fileName, { cache: 'no-store' })
         .then(resp => {
             if (!resp.ok) {
+                if (isLocalUploadContext) {
+                    throw new Error(`Module file '${fileName}' not found. Upload all model files together via the file selector, or use server paths.`);
+                }
                 throw new Error(`HTTP ${resp.status} while loading ${fileName}`);
             }
             return resp.json();
@@ -4630,26 +4756,98 @@ loadModelFromFile(currentModelFile).finally(() => {
 // File Input: Load Custom Model
 // ============================================================================
 
-const fileInput = document.getElementById('fileInput');
-fileInput.addEventListener('change', event => {
-    const file = event.target.files[0];
-    if (!file) return;
+/**
+ * Handles model file selection and loading from file input.
+ * Single file: load directly. Multiple files: show selection dialog.
+ * @param {FileList|null|undefined} files Selected model files
+ */
+function loadModelFilesFromSelection(files) {
+    const fileList = Array.from(files || []).filter(f => /\.json$/i.test(f?.name || ''));
+    if (!fileList.length) {
+        alert('Please select at least one JSON file.');
+        return;
+    }
 
-    const reader = new FileReader();
-    reader.onload = e => {
-        try {
-            const json = JSON.parse(e.target.result);
-            currentModelFile = file.name || 'local-upload.json';
+    registerUploadedLocalModelFiles(fileList);
+    isLocalUploadContext = true;
+
+    if (fileList.length === 1) {
+        loadLocalModelFile(fileList[0]);
+    } else {
+        showModelSelectionDialog(fileList);
+    }
+}
+
+/**
+ * Loads a local model file and initializes the viewer.
+ * @param {File} file The model file to load
+ */
+function loadLocalModelFile(file) {
+    readJsonFromLocalFile(file)
+        .then(json => {
+            currentModelFile = normalizeRelativePath(file.webkitRelativePath || file.name) || 'local-upload.json';
             moduleNavigationState.stack = [];
             loadModelFromObject(json);
             updateModuleNavigationUI();
-        } catch (err) {
+        })
+        .catch(err => {
             console.error('Error parsing JSON file:', err);
             alert('The file is not a valid JSON model file.');
-        }
+        });
+}
+
+/**
+ * Shows dialog for selecting the parent model from multiple uploaded files.
+ * @param {Array<File>} files Available model files
+ */
+function showModelSelectionDialog(files) {
+    const overlay = document.getElementById('modelSelectionOverlay');
+    const list = document.getElementById('modelSelectionList');
+    const btnCancel = document.getElementById('btnModelSelectionCancel');
+
+    if (!overlay || !list || !btnCancel) return;
+
+    list.innerHTML = '';
+
+    const closeDialog = () => {
+        overlay.style.display = 'none';
     };
-    reader.readAsText(file);
+
+    files.forEach(file => {
+        const li = document.createElement('li');
+        li.className = 'module-call-item';
+        li.textContent = file.name;
+        li.tabIndex = 0;
+
+        li.addEventListener('click', () => {
+            closeDialog();
+            loadLocalModelFile(file);
+        });
+
+        li.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                closeDialog();
+                loadLocalModelFile(file);
+            }
+        });
+
+        list.appendChild(li);
+    });
+
+    btnCancel.onclick = closeDialog;
+    overlay.onclick = event => {
+        if (event.target === overlay) closeDialog();
+    };
+
+    overlay.style.display = 'flex';
+}
+
+const fileInput = document.getElementById('fileInput');
+fileInput.addEventListener('change', event => {
+    loadModelFilesFromSelection(event.target.files);
 });
+
 
 /**
  * Updates all active data flow animations.

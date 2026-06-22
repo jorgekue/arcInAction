@@ -115,10 +115,13 @@ arcInAction/
 ├── model-files.properties # Additional predefined models
 ├── doc/
 │   ├── english/          # English documentation
+│   │   └── viewerChangeChecklist.md  # Short checklist for future viewer changes
 │   ├── german/           # German documentation
 │   └── img/              # Documentation images
 └── README.md             # This file
 ```
+
+For future viewer-related feature work or bugfixes, see the short maintenance checklist in `doc/english/viewerChangeChecklist.md`.
 
 ## Basic Usage
 

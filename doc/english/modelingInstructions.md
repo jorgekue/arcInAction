@@ -277,6 +277,10 @@ The root-level `modules` section defines reusable child models.
 }
 ```
 
+**Notes on relative module paths** (`modules[].file`):
+- When models are served from a web server, relative paths are resolved against the currently loaded model file's directory.
+- When loading a model via the "Load model" button, relative module paths are resolved from the uploaded model file's directory, using standard web fetch.
+
 ### Parameter resolution order
 
 For a module invocation, effective runtime parameters are merged in this order:

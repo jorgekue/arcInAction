@@ -459,6 +459,31 @@ body {
     background: rgba(255, 255, 255, 0.15);
 }
 
+.model-selection-dialog {
+    max-width: 460px;
+}
+
+.model-selection-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
+.model-selection-cancel {
+    padding: 4px 8px;
+    font-size: 11px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid #666;
+    color: #fff;
+    cursor: pointer;
+}
+
+.model-selection-cancel:hover,
+.model-selection-cancel:focus {
+    background: rgba(255, 255, 255, 0.18);
+    outline: none;
+}
+
 .module-call-actions {
     display: flex;
     justify-content: flex-end;
