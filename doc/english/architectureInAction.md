@@ -178,6 +178,14 @@ Additionally, users can dynamically load their own models:
 - Via the **"Load Model"** button (lower right), a local JSON model can be selected.
 - This allows different architecture variants or project states to be easily viewed in the browser – without modifying the viewer itself.
 
+When working with model sets that use the **module feature** – i.e., a parent model that navigates into child module models via connections – multiple files can be uploaded together:
+
+- The file dialog supports **multi-file selection**: select all related JSON files at once.
+- If more than one file is selected, a **dialog prompts for the parent model**. The selected file becomes the starting point; the other files are available as module targets.
+- **Single-file upload** continues to work as before.
+
+This enables full drill-down navigation within a locally uploaded model set without requiring a server.
+
 ![Load Individual Models](/doc/img/loadModel.gif)
 
 _Image: Load individual models._

@@ -177,7 +177,13 @@ Zusätzlich können Benutzer eigene Modelle dynamisch laden:
 
 - Über den Button **„Laden Modell“** (rechts unten) kann ein loka­les JSON‑Modell ausgewählt werden.
 - So lassen sich unterschiedliche Architekturvarianten oder Projektstände einfach im Browser betrachten – ohne Anpassung am Viewer selbst.
+Wenn mit Modell-Sets gearbeitet wird, die das **Modul-Feature** nutzen – also ein Elternmodell, das über Connections in untergeordnete Modul-Modelle navigiert – können mehrere Dateien gemeinsam hochgeladen werden:
 
+- Das Datei-Dialogfeld unterstützt **Mehrfach-Auswahl**: alle zusammengehörigen JSON‑Dateien auf einmal auswählen.
+- Bei mehr als einer ausgewählten Datei erscheint ein **Dialog zur Auswahl des Elternmodells**. Die gewählte Datei ist der Ausgangspunkt; die übrigen Dateien stehen als Modul-Ziele zur Verfügung.
+- **Einzeldatei-Upload** funktioniert wie bisher.
+
+Damit ist eine vollständige Drill-down-Navigation innerhalb eines lokal hochgeladenen Modell-Sets möglich – ohne Server.
 ![Individuelle Modelle laden](/doc/img/loadModel.gif)
 
 _Bild: Individuelle Modelle laden._
