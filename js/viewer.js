@@ -7,7 +7,7 @@
 
 import * as THREE from '../lib/three.module.js';
 import { OrbitControls } from '../lib/OrbitControls.js';
-import * as LABEL from '../js/text-labels.js';
+import * as LABEL from './text-labels.js';
 import { TextGeometry } from '../lib/TextGeometry.js';
 
 // ============================================================================
@@ -2067,7 +2067,7 @@ function setDeveloperLineStyle(line, selected) {
         line.material.color.setHex(developerModeState.selectedColor);
     } else {
         const originalColor = line.userData?.originalColor || defaultConnectionColor;
-        line.material.color.setHex(originalColor);
+        line.material.color.set(originalColor);
     }
 }
 
@@ -3628,7 +3628,7 @@ function createConnections(model) {
             const { pathPoints, startSurface, endSurface } = buildConnectionPath(conn, fromMesh, toMesh);
             if (pathPoints.length < 2) return;
 
-            const color = (group.color || defaultConnectionColor);
+            const color = (conn?.color ?? group.color ?? defaultConnectionColor);
 
             const lineGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints);
             const lineMaterial = new THREE.LineBasicMaterial({ color });
