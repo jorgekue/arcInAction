@@ -5249,6 +5249,27 @@ function buildConnectionGroupsUI() {
 
 }
 
+export {
+    componentMeshes,
+    componentCenters,
+    activeComponentFlowCounts,
+    applyComponentActiveStyle,
+    setCameraView,
+    cameraViews,
+    currentCameraViewId,
+    connectionGroups,
+    rebuildConnectionSequence,
+    updateConnectionVisibilityFromGroups,
+    buildConnectionGroupsUI,
+    playFromStartStep,
+    stopAutoPlay,
+    flowController,
+    connectionSequence,
+    currentSelectedConnectionIndex,
+    modelData,
+    currentModelFile
+};
+
 
 
 
