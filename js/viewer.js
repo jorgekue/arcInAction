@@ -4666,6 +4666,41 @@ function setCameraView(viewId, animate = true) {
     };
 }
 
+/**
+ * Focuses the camera on a component while preserving its current viewing offset.
+ * @param {string} componentId - ID of the component to focus
+ * @param {boolean} [animate=true] - Whether to animate the camera movement
+ */
+function focusCameraOnComponent(componentId, animate = true) {
+    const center = componentCenters.get(componentId);
+    if (!center) {
+        console.warn('Unknown component:', componentId);
+        return;
+    }
+
+    const fromPos = camera.position.clone();
+    const fromTarget = controls.target.clone();
+    const cameraOffset = fromPos.clone().sub(fromTarget);
+    const toTarget = center.clone();
+    const toPos = toTarget.clone().add(cameraOffset);
+
+    if (!animate) {
+        camera.position.copy(toPos);
+        controls.target.copy(toTarget);
+        controls.update();
+        return;
+    }
+
+    cameraAnimation = {
+        t: 0,
+        duration: 0.8,
+        fromPos,
+        fromTarget,
+        toPos,
+        toTarget
+    };
+}
+
 // ============================================================================
 // User Interaction: Mouse Click
 // ============================================================================
@@ -5255,6 +5290,7 @@ export {
     activeComponentFlowCounts,
     applyComponentActiveStyle,
     setCameraView,
+    focusCameraOnComponent,
     cameraViews,
     currentCameraViewId,
     connectionGroups,
