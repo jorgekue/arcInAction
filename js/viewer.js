@@ -4351,6 +4351,9 @@ function resumeAutoPlay() {
     if (currentConnectionIndex >= connectionSequence.length) {
         currentConnectionIndex = 0;
     }
+    activeFlows.forEach(flow => {
+        flow.paused = false;
+    });
     flowController.isPlaying = true;
     updateFlowControlButtons();
 }
@@ -4897,6 +4900,11 @@ function updateDataFlows(delta) {
 
     for (let i = activeFlows.length - 1; i >= 0; i--) {
         const flow = activeFlows[i];
+        if (flow.paused) {
+            anyRunning = true;
+            continue;
+        }
+
         flow.elapsed += delta * flow.direction;
 
         const tRaw = flow.elapsed / flow.duration;
@@ -5019,6 +5027,14 @@ function stopAllFlows() {
 function stopAutoPlay() {
     flowController.isPlaying = false;
     stopAllFlows();
+    updateFlowControlButtons();
+}
+
+function pauseAutoPlay() {
+    flowController.isPlaying = false;
+    activeFlows.forEach(flow => {
+        flow.paused = true;
+    });
     updateFlowControlButtons();
 }
 
@@ -5303,6 +5319,7 @@ export {
     playFromStartStep,
     resumeAutoPlay,
     stopAutoPlay,
+    pauseAutoPlay,
     flowController,
     connectionSequence,
     currentSelectedConnectionIndex,
