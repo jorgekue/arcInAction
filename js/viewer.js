@@ -4347,6 +4347,14 @@ function initImpressumDialog() {
 
 
 
+function resumeAutoPlay() {
+    if (currentConnectionIndex >= connectionSequence.length) {
+        currentConnectionIndex = 0;
+    }
+    flowController.isPlaying = true;
+    updateFlowControlButtons();
+}
+
 /**
  * Initializes the data flow control buttons.
  */
@@ -4374,12 +4382,7 @@ function initFlowControls() {
     });
 
     btnPlay.addEventListener('click', () => {
-        // If at end, restart from beginning
-        if (currentConnectionIndex >= connectionSequence.length) {
-            currentConnectionIndex = 0;
-        }
-        flowController.isPlaying = true;
-        updateFlowControlButtons();
+        resumeAutoPlay();
     });
 
     btnReplay.addEventListener('click', () => {
@@ -5298,6 +5301,7 @@ export {
     updateConnectionVisibilityFromGroups,
     buildConnectionGroupsUI,
     playFromStartStep,
+    resumeAutoPlay,
     stopAutoPlay,
     flowController,
     connectionSequence,
