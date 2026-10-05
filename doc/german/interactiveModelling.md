@@ -88,7 +88,7 @@ Konfigurierbare Historientiefe:
   "settings": {
     "developerMode": false,
     "undoRedoDepth": 50,
-    "animateComponents": false,
+    "highlightComponentsDuringFlow": false,
     "showComponentPosition": false,
     "selectConnectionsAndComponents": false
   }

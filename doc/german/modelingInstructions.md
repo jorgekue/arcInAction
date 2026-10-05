@@ -394,7 +394,7 @@ Globale Datenfluss‑Einstellungen (optional, im JSON‑Root unter `settings`):
   "settings": {
     "flowDurationMin": 3,
     "flowSpeed": 2.5,
-    "animateComponents": false,
+    "highlightComponentsDuringFlow": false,
     "showComponentPosition": false,
     "selectConnectionsAndComponents": false,
     "developerMode": false,
@@ -405,7 +405,7 @@ Globale Datenfluss‑Einstellungen (optional, im JSON‑Root unter `settings`):
 
 - `settings.flowDurationMin` (number): Mindestdauer der Animation in Sekunden. Verhindert, dass sehr kurze Verbindungen zu schnell animieren.
 - `settings.flowSpeed` (number): Animationsgeschwindigkeit in Grid‑Einheiten pro Sekunde.
-- `settings.animateComponents` (boolean): Aktiviert/deaktiviert das Hervorheben aktiver Komponenten während der Datenfluss‑Animation. Default ist `false`.
+- `settings.highlightComponentsDuringFlow` (boolean): Aktiviert/deaktiviert das Hervorheben aktiver Komponenten während der Datenfluss‑Animation. Default ist `false`. `settings.animateComponents` wird als Legacy-Einstellung akzeptiert, wenn die neue Einstellung fehlt.
 - `settings.showComponentPosition` (boolean): Aktiviert/deaktiviert die visuelle Positionsmarkierung der aktuell fokussierten Komponenten. Default ist `false`.
 - `settings.selectConnectionsAndComponents` (boolean, optional): Steuert den Sichtbarkeitsmodus im ConnectionGroups‑Panel. Bei `false` (Default) werden nur Verbindungslinien/-pfeile anhand aktiver Gruppen gefiltert. Bei `true` werden zusätzlich alle Komponenten ausgeblendet, die in den aktuell aktiven Gruppen nicht verwendet werden.
 - `settings.developerMode` (boolean): Blendet den Developer‑Mode im Viewer ein/aus. Der Schalter ist standardmäßig nicht sichtbar und wird nur bei explizitem `true` eingeblendet.

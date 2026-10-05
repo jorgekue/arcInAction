@@ -29,14 +29,17 @@ const validActionTypes = new Set([
     'stopScenario'
 ]);
 
+/** Checks whether a value is a plain action object. */
 function isObject(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+/** Checks whether a value is a non-empty string. */
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
 }
 
+/** Converts a connection-group name into its scenario identifier. */
 function toScenarioId(name) {
     return String(name ?? '')
         .normalize('NFKD')
@@ -47,11 +50,13 @@ function toScenarioId(name) {
         .replace(/^-+|-+$/g, '');
 }
 
+/** Records and logs a dispatcher warning. */
 function addWarning(warnings, message) {
     warnings.push(message);
     console.warn(message);
 }
 
+/** Filters component IDs against the currently loaded model. */
 function validateComponentIds(componentIds, actionType, warnings) {
     if (!Array.isArray(componentIds)) {
         addWarning(warnings, `${actionType}: componentIds must be an array`);
@@ -74,6 +79,7 @@ function validateComponentIds(componentIds, actionType, warnings) {
     return [...new Set(validIds)];
 }
 
+/** Applies a chat highlight without overriding active flow highlighting. */
 function setComponentHighlight(componentId, isHighlighted) {
     const currentEntry = componentMeshes.get(componentId);
     if (!currentEntry) return;
@@ -91,6 +97,7 @@ function setComponentHighlight(componentId, isHighlighted) {
     }
 }
 
+/** Clears highlights previously applied by the dispatcher. */
 function clearHighlights() {
     for (const [componentId, previousEntry] of highlightedComponents) {
         if (componentMeshes.get(componentId) === previousEntry && !activeComponentFlowCounts.has(componentId)) {
@@ -100,6 +107,7 @@ function clearHighlights() {
     highlightedComponents.clear();
 }
 
+/** Resolves a unique scenario slug against the loaded connection groups. */
 function resolveScenario(scenarioId, warnings) {
     const matchingGroups = connectionGroups.filter(group => toScenarioId(group.name) === scenarioId);
     if (matchingGroups.length === 0) {
@@ -114,6 +122,7 @@ function resolveScenario(scenarioId, warnings) {
     return matchingGroups[0];
 }
 
+/** Validates and executes one viewer action. */
 function applyAction(action) {
     const warnings = [];
     if (!isObject(action) || !isNonEmptyString(action.type)) {
@@ -209,10 +218,12 @@ function applyAction(action) {
     return warnings;
 }
 
+/** Applies one action and returns any validation warnings. */
 export function applyViewerAction(action) {
     return { warnings: applyAction(action) };
 }
 
+/** Applies actions independently so one invalid action does not block others. */
 export function applyViewerActions(actions) {
     const warnings = [];
     if (!Array.isArray(actions)) {

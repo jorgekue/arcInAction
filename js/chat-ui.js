@@ -8,6 +8,7 @@ const chatInput = document.getElementById('chat-input');
 const chatMessages = document.getElementById('chat-messages');
 const mockContext = { modelId: 'local-mock' };
 
+/** Returns a deterministic local mock answer and its viewer actions. */
 export function getMockResponse(message, context = {}) {
     const text = message.trim();
     const componentMatch = text.match(/^(?:zeige|markiere|hebe hervor)(?: mir)?\s+(?:(?:die )?komponente\s+)?([a-z0-9_-]+)$/i);
@@ -50,6 +51,7 @@ export function getMockResponse(message, context = {}) {
     };
 }
 
+/** Appends a chat message as text content. */
 function appendMessage(role, text) {
     const message = document.createElement('div');
     message.className = `chat-message chat-message-${role}`;
@@ -73,6 +75,7 @@ chatForm.addEventListener('submit', event => {
     result.warnings.forEach(warning => appendMessage('warning', warning));
 });
 
+/** Opens or closes the panel and synchronizes its accessibility state. */
 function setChatPanelOpen(isOpen) {
     chatPanel.hidden = !isOpen;
     chatToggleButton.setAttribute('aria-expanded', String(isOpen));

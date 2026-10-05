@@ -394,7 +394,7 @@ Global flow animation settings (optional, in JSON root under `settings`):
   "settings": {
     "flowDurationMin": 3,
     "flowSpeed": 2.5,
-    "animateComponents": false,
+    "highlightComponentsDuringFlow": false,
     "showComponentPosition": false,
     "selectConnectionsAndComponents": false,
     "developerMode": false,
@@ -405,7 +405,7 @@ Global flow animation settings (optional, in JSON root under `settings`):
 
 - `settings.flowDurationMin` (number): Minimum animation duration in seconds. Prevents very short connections from animating too fast.
 - `settings.flowSpeed` (number): Animation speed in grid units per second.
-- `settings.animateComponents` (boolean): Enables/disables active component highlighting during data flow animations. Default is `false`.
+- `settings.highlightComponentsDuringFlow` (boolean): Enables/disables active component highlighting during data flow animations. Default is `false`. The legacy `settings.animateComponents` is accepted when the new setting is absent.
 - `settings.showComponentPosition` (boolean): Enables/disables visual position highlighting for currently focused components. Default is `false`.
 - `settings.selectConnectionsAndComponents` (boolean, optional): Controls visibility mode for the connection groups panel. If `false` (default), only connection lines/arrows are filtered by active groups. If `true`, components not used by the currently active groups are also hidden.
 - `settings.developerMode` (boolean): Shows/hides developer mode controls in the viewer. The toggle is hidden by default and becomes visible only when explicitly set to `true`.

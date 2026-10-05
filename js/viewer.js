@@ -44,6 +44,7 @@ let gridHelper = null;
 const flowController = {
     /** @type {boolean} Whether auto-play mode is active */
     isPlaying: false,
+    isPaused: false,
     /** @type {string} Animation mode: 'auto' or 'step' */
     mode: 'auto',
     /** @type {number} Default duration in seconds per connection animation */
@@ -56,9 +57,9 @@ const modelFlowTimingSettings = {
     flowSpeed: 2.5
 };
 
-/** @type {{animateComponents: boolean, selectConnectionsAndComponents: boolean, showComponentPosition: boolean}} Global visual settings from model.settings */
+/** @type {{highlightComponentsDuringFlow: boolean, selectConnectionsAndComponents: boolean, showComponentPosition: boolean}} Global visual settings from model.settings */
 const modelVisualSettings = {
-    animateComponents: false,
+    highlightComponentsDuringFlow: false,
     selectConnectionsAndComponents: false,
     showComponentPosition: false
 };
@@ -1028,6 +1029,13 @@ function updateModuleNavigationUI() {
             ? `root > module ${labels[labels.length - 1]}`
             : '';
     }
+}
+
+/** Returns the current root-to-module navigation path. */
+function getModulePath() {
+    return ['root', ...moduleNavigationState.stack
+        .map(entry => String(entry.label || '').trim())
+        .filter(Boolean)];
 }
 
 /**
@@ -2872,6 +2880,9 @@ function clearHighlight() {
  * Resets component data structures.
  */
 function clearScene() {
+    stopAllFlows();
+    flowController.isPlaying = false;
+    flowController.isPaused = false;
     stopDeveloperPointDrag();
     clearDeveloperPointHandles();
     clearDeveloperInsertMarker();
@@ -2996,7 +3007,7 @@ function updateComponentFlowActivation(componentId, activate) {
  * @returns {Array<string>} Activated component IDs
  */
 function activateComponentsForConnection(connection) {
-    if (!modelVisualSettings.animateComponents) {
+    if (!modelVisualSettings.highlightComponentsDuringFlow) {
         return [];
     }
 
@@ -3938,14 +3949,14 @@ function rebuildConnectionSequence() {
  * Supported settings:
  * - flowDurationMin: minimum duration in seconds
  * - flowSpeed: speed in grid units per second
- * - animateComponents: enables/disables active component highlighting
+ * - highlightComponentsDuringFlow: enables/disables active component highlighting
  * - selectConnectionsAndComponents: hides components not used by active connection groups
  * @param {Object} model - Model object
  */
 function applyFlowTimingSettingsFromModel(model) {
     modelFlowTimingSettings.flowDurationMin = 3;
     modelFlowTimingSettings.flowSpeed = 2.5;
-    modelVisualSettings.animateComponents = false;
+    modelVisualSettings.highlightComponentsDuringFlow = false;
     modelVisualSettings.selectConnectionsAndComponents = false;
     modelVisualSettings.showComponentPosition = false;
     modelDeveloperSettings.showDeveloperControls = false;
@@ -3967,8 +3978,10 @@ function applyFlowTimingSettingsFromModel(model) {
         modelFlowTimingSettings.flowSpeed = parsedSettingsSpeed;
     }
 
-    if (typeof settings.animateComponents === 'boolean') {
-        modelVisualSettings.animateComponents = settings.animateComponents;
+    if (typeof settings.highlightComponentsDuringFlow === 'boolean') {
+        modelVisualSettings.highlightComponentsDuringFlow = settings.highlightComponentsDuringFlow;
+    } else if (typeof settings.animateComponents === 'boolean') {
+        modelVisualSettings.highlightComponentsDuringFlow = settings.animateComponents;
     }
 
     if (typeof settings.selectConnectionsAndComponents === 'boolean') {
@@ -4092,6 +4105,9 @@ function startDataFlowOnConnection(connObject, options = {}) {
     activeFlows.push({
         object3D: flowMesh,
         labelSprite,
+        connectionId: typeof conn?.id === 'string' ? conn.id : null,
+        fromComponentId: typeof conn?.from === 'string' ? conn.from : null,
+        toComponentId: typeof conn?.to === 'string' ? conn.to : null,
         pathPoints: pathPointsFlow.map(p => p.clone()),
         duration,
         elapsed: direction === 1 ? 0 : duration,
@@ -4347,6 +4363,7 @@ function initImpressumDialog() {
 
 
 
+/** Resumes automatic playback and any paused flow animations. */
 function resumeAutoPlay() {
     if (currentConnectionIndex >= connectionSequence.length) {
         currentConnectionIndex = 0;
@@ -4354,6 +4371,7 @@ function resumeAutoPlay() {
     activeFlows.forEach(flow => {
         flow.paused = false;
     });
+    flowController.isPaused = false;
     flowController.isPlaying = true;
     updateFlowControlButtons();
 }
@@ -4454,12 +4472,12 @@ function updateFlowPositionControl() {
 function initViewPanel() {
     const chkGrid = document.getElementById('chk-view-grid');
     const chkComponentPosition = document.getElementById('chk-view-component-position');
-    const chkAnimateComponents = document.getElementById('chk-view-animate-components');
+    const chkHighlightComponentsDuringFlow = document.getElementById('chk-view-highlight-components-during-flow');
     const devControls = document.getElementById('dev-controls');
     const chkDevMode = document.getElementById('chk-dev-mode');
     const btnDevExport = document.getElementById('btn-dev-export');
 
-    if (!chkGrid || !chkComponentPosition || !chkAnimateComponents || !devControls || !chkDevMode || !btnDevExport) {
+    if (!chkGrid || !chkComponentPosition || !chkHighlightComponentsDuringFlow || !devControls || !chkDevMode || !btnDevExport) {
         console.warn('view panel controls not found');
         return;
     }
@@ -4469,7 +4487,7 @@ function initViewPanel() {
     gridHelper.visible = false;
     chkGrid.checked = false;
     chkComponentPosition.checked = !!modelVisualSettings.showComponentPosition;
-    chkAnimateComponents.checked = !!modelVisualSettings.animateComponents;
+    chkHighlightComponentsDuringFlow.checked = !!modelVisualSettings.highlightComponentsDuringFlow;
     chkDevMode.checked = false;
     setDeveloperModeEnabled(false);
     devControls.style.display = modelDeveloperSettings.showDeveloperControls ? 'inline-flex' : 'none';
@@ -4498,8 +4516,8 @@ function initViewPanel() {
         updateCurrentConnectionMarker();
     });
 
-    chkAnimateComponents.addEventListener('change', () => {
-        modelVisualSettings.animateComponents = chkAnimateComponents.checked;
+    chkHighlightComponentsDuringFlow.addEventListener('change', () => {
+        modelVisualSettings.highlightComponentsDuringFlow = chkHighlightComponentsDuringFlow.checked;
     });
 
     chkDevMode.addEventListener('change', () => {
@@ -4520,7 +4538,7 @@ function initViewPanel() {
  */
 function syncViewPanelStateFromSettings() {
     const chkComponentPosition = document.getElementById('chk-view-component-position');
-    const chkAnimateComponents = document.getElementById('chk-view-animate-components');
+    const chkHighlightComponentsDuringFlow = document.getElementById('chk-view-highlight-components-during-flow');
     const devControls = document.getElementById('dev-controls');
     const chkDevMode = document.getElementById('chk-dev-mode');
 
@@ -4528,8 +4546,8 @@ function syncViewPanelStateFromSettings() {
         chkComponentPosition.checked = !!modelVisualSettings.showComponentPosition;
     }
 
-    if (chkAnimateComponents) {
-        chkAnimateComponents.checked = !!modelVisualSettings.animateComponents;
+    if (chkHighlightComponentsDuringFlow) {
+        chkHighlightComponentsDuringFlow.checked = !!modelVisualSettings.highlightComponentsDuringFlow;
     }
 
     if (devControls) {
@@ -4934,6 +4952,41 @@ function updateDataFlows(delta) {
     return anyRunning;
 }
 
+/** Returns playback state independently of component highlighting. */
+function getPlaybackContext() {
+    const flows = activeFlows.map(flow => {
+        const rawProgress = flow.duration > 0 ? flow.elapsed / flow.duration : 0;
+        const progress = flow.loop
+            ? ((rawProgress % 1) + 1) % 1
+            : Math.max(0, Math.min(rawProgress, 1));
+        const componentIds = [...new Set([flow.fromComponentId, flow.toComponentId]
+            .filter(componentId => componentId && componentMeshes.has(componentId)))];
+
+        return {
+            connectionId: flow.connectionId,
+            fromComponentId: flow.fromComponentId,
+            toComponentId: flow.toComponentId,
+            componentIds,
+            progress,
+            status: flow.paused ? 'paused' : 'running'
+        };
+    });
+    const activeComponentIds = [...new Set(flows.flatMap(flow => flow.componentIds))];
+    const hasRunningFlow = flows.some(flow => flow.status === 'running');
+    const status = flowController.isPlaying || hasRunningFlow
+        ? 'running'
+        : flowController.isPaused || flows.length > 0
+            ? 'paused'
+            : 'idle';
+
+    return {
+        status,
+        isAutoPlaying: flowController.isPlaying,
+        flows,
+        activeComponentIds
+    };
+}
+
 /**
  * Calculates a point along a path at a given parameter t (0 to 1).
  * Uses distance-based interpolation for smooth movement along multi-segment paths.
@@ -4989,6 +5042,7 @@ function updateAutoPlay(delta, hasRunningFlows) {
     // If all connections are done, stop
     if (currentConnectionIndex >= connectionSequence.length) {
         flowController.isPlaying = false;
+        flowController.isPaused = false;
         updateFlowControlButtons(); // UI aktualisieren
         return;
     }
@@ -5026,12 +5080,15 @@ function stopAllFlows() {
  */
 function stopAutoPlay() {
     flowController.isPlaying = false;
+    flowController.isPaused = false;
     stopAllFlows();
     updateFlowControlButtons();
 }
 
+/** Pauses auto-play and freezes currently active flow animations. */
 function pauseAutoPlay() {
     flowController.isPlaying = false;
+    flowController.isPaused = true;
     activeFlows.forEach(flow => {
         flow.paused = true;
     });
@@ -5045,6 +5102,7 @@ function pauseAutoPlay() {
 function playConnectionAtIndex(index) {
     stopAllFlows();
     flowController.isPlaying = false;
+    flowController.isPaused = false;
 
     if (connectionSequence.length === 0) {
         currentSelectedConnectionIndex = -1;
@@ -5074,6 +5132,7 @@ function playConnectionAtIndex(index) {
 function setCurrentConnectionPosition(index) {
     stopAllFlows();
     flowController.isPlaying = false;
+    flowController.isPaused = false;
 
     if (connectionSequence.length === 0) {
         currentSelectedConnectionIndex = -1;
@@ -5324,7 +5383,9 @@ export {
     connectionSequence,
     currentSelectedConnectionIndex,
     modelData,
-    currentModelFile
+    currentModelFile,
+    getModulePath,
+    getPlaybackContext
 };
 
 
