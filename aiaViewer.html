@@ -63,6 +63,11 @@
                 <button id="chatCloseBtn" type="button" aria-label="Close chat">&times;</button>
             </header>
             <div id="chat-messages" role="log" aria-live="polite"></div>
+            <form id="chat-form">
+                <label class="chat-visually-hidden" for="chat-input">Nachricht</label>
+                <input id="chat-input" name="message" type="text" autocomplete="off" placeholder="z. B. zeige S1" required>
+                <button id="chat-send" type="submit">Senden</button>
+            </form>
         </section>
     </div>
 
