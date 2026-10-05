@@ -1,4 +1,5 @@
 import { applyViewerActions } from './viewer-actions.js';
+import { buildViewerContext } from './viewer-context.js';
 
 const chatToggleButton = document.getElementById('chatToggleBtn');
 const chatCloseButton = document.getElementById('chatCloseBtn');
@@ -6,7 +7,6 @@ const chatPanel = document.getElementById('chat-panel');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 const chatMessages = document.getElementById('chat-messages');
-const mockContext = { modelId: 'local-mock' };
 
 /** Returns a deterministic local mock answer and its viewer actions. */
 export function getMockResponse(message, context = {}) {
@@ -68,7 +68,8 @@ chatForm.addEventListener('submit', event => {
     appendMessage('user', message);
     chatInput.value = '';
 
-    const response = getMockResponse(message, mockContext);
+    const context = buildViewerContext();
+    const response = getMockResponse(message, context);
     appendMessage('assistant', response.answer);
 
     const result = applyViewerActions(response.actions);
