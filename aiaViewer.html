@@ -6,6 +6,7 @@
     <meta name="description" content="3D/4D visualization tool for software architectures - architecture in action (aia)" />
     <title>architecture in action (aia)</title>
     <link rel="stylesheet" href="css/viewer.css">
+    <link rel="stylesheet" href="css/chat.css">
 </head>
 
 <body>
@@ -51,6 +52,19 @@
 
     <!-- Model list panel (hidden by default) -->
     <div id="modelListPanel" style="display:none;"></div>
+
+    <div id="chat-widget">
+        <button id="chatToggleBtn" type="button" aria-expanded="false" aria-controls="chat-panel">
+            Chat
+        </button>
+        <section id="chat-panel" aria-label="Chat" hidden>
+            <header class="chat-panel-header">
+                <strong>Chat</strong>
+                <button id="chatCloseBtn" type="button" aria-label="Close chat">&times;</button>
+            </header>
+            <div id="chat-messages" role="log" aria-live="polite"></div>
+        </section>
+    </div>
 
     <!-- Data flow animation controls -->
     <div id="flow-controls">
@@ -109,6 +123,7 @@
 
     <!-- Main application script -->
     <script type="module" src="./js/viewer.js"></script>
+    <script type="module" src="./js/chat-ui.js"></script>
 
     <!-- Info/Impressum overlay dialog -->
     <div id="impressum-overlay" class="aia-impressum-overlay" style="display: none;">
