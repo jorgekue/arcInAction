@@ -53,8 +53,29 @@
     <!-- Model list panel (hidden by default) -->
     <div id="modelListPanel" style="display:none;"></div>
 
+    <div id="backend-model-widget">
+        <button id="backend-model-toggle" type="button" aria-expanded="false" aria-controls="backend-model-panel">
+            Backend models...
+        </button>
+        <section id="backend-model-panel" aria-label="Backend models" hidden>
+            <header class="backend-model-header">
+                <strong>Backend models</strong>
+                <button id="backend-model-close" type="button" aria-label="Close backend model panel">&times;</button>
+            </header>
+            <form id="backend-connection-form">
+                <label for="backend-base-url">Backend URL</label>
+                <input id="backend-base-url" name="backendUrl" type="url" placeholder="https://host.example" required>
+                <label for="backend-chat-token">Chat token (optional)</label>
+                <input id="backend-chat-token" name="chatToken" type="password" autocomplete="off">
+                <button id="backend-load-models" type="submit">Load models</button>
+            </form>
+            <div id="backend-model-status" role="status" aria-live="polite"></div>
+            <div id="backend-model-list"></div>
+        </section>
+    </div>
+
     <div id="chat-widget">
-        <button id="chatToggleBtn" type="button" aria-expanded="false" aria-controls="chat-panel">
+        <button id="chatToggleBtn" type="button" aria-expanded="false" aria-controls="chat-panel" disabled>
             Chat
         </button>
         <section id="chat-panel" aria-label="Chat" hidden>
@@ -128,6 +149,7 @@
 
     <!-- Main application script -->
     <script type="module" src="./js/viewer.js"></script>
+    <script type="module" src="./js/backend-models.js"></script>
     <script type="module" src="./js/chat-ui.js"></script>
 
     <!-- Info/Impressum overlay dialog -->

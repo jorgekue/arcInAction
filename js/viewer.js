@@ -93,6 +93,9 @@ const modelFiles = [...defaultModelFiles];
 
 /** @type {string} Currently loaded model file name */
 let currentModelFile = 'model.json';
+let currentModelSource = 'static';
+let currentBackendModelId = null;
+let backendModelFetcher = null;
 
 /** @type {Map<string, File>} Uploaded local model files for resolving relative module references */
 const uploadedLocalModelFiles = new Map();
@@ -1124,6 +1127,9 @@ function enterModuleFromComponent(component, callSelection = null) {
         .then(rawModuleModel => {
             const moduleModel = applyModuleParametersToModel(rawModuleModel, resolvedParams, moduleDef, component, callSelection);
             currentModelFile = resolvedFile;
+            if (currentModelSource === 'backend') {
+                setCurrentModelSource('backend', resolvedFile);
+            }
             loadModelFromObject(moduleModel);
             updateModelListUI();
         })
@@ -1163,6 +1169,9 @@ function returnToParentModuleContext() {
 
     loadModelFromObject(parentContext.model);
     currentModelFile = parentContext.modelFile || currentModelFile;
+    if (currentModelSource === 'backend') {
+        setCurrentModelSource('backend', currentModelFile);
+    }
     restoreConnectionGroupSelectionState(parentContext.groupSelection || null);
 
     currentConnectionIndex = Math.max(0, Math.min(parentContext.currentConnectionIndex || 0, connectionSequence.length));
@@ -4148,6 +4157,30 @@ function loadModelFromObject(model) {
     createConnections(modelData);
 }
 
+/** Updates model provenance and notifies UI modules. */
+function setCurrentModelSource(source, backendModelId = null) {
+    currentModelSource = source;
+    currentBackendModelId = source === 'backend' ? backendModelId : null;
+    window.dispatchEvent(new CustomEvent('viewer-model-source-change', {
+        detail: { source: currentModelSource, modelId: currentBackendModelId }
+    }));
+}
+
+/** Loads a backend model through the shared model-object pipeline. */
+function loadBackendModel(model, backendModelId) {
+    if (!model || typeof model !== 'object' || Array.isArray(model)) {
+        throw new Error('Backend model response must be a JSON object.');
+    }
+
+    currentModelFile = backendModelId;
+    isLocalUploadContext = false;
+    moduleNavigationState.stack = [];
+    setCurrentModelSource('backend', backendModelId);
+    loadModelFromObject(model);
+    updateModelListUI();
+    updateModuleNavigationUI();
+}
+
 /**
  * Sets up connection groups from the model data.
  * Supports both new structure (connectionGroups array) and legacy structure (flat connections array).
@@ -4191,11 +4224,12 @@ function setupConnectionGroupsFromModel(model) {
  * @returns {Promise<void>} Promise that resolves when model is loaded
  */
 function loadModelFromFile(fileName) {
-    currentModelFile = fileName;
     isLocalUploadContext = false;
 
-    return fetchModelFromFile(fileName)
+    return fetchModelFromFile(fileName, { allowBackend: false })
         .then(model => {
+            currentModelFile = fileName;
+            setCurrentModelSource('static');
             loadModelFromObject(model);
             updateModelListUI();
         })
@@ -4210,8 +4244,12 @@ function loadModelFromFile(fileName) {
  * @param {string} fileName - Path to the JSON model file
  * @returns {Promise<Object>} Promise with parsed model object
  */
-function fetchModelFromFile(fileName) {
+function fetchModelFromFile(fileName, { allowBackend = true } = {}) {
     const normalizedFileName = normalizeRelativePath(String(fileName || '').trim());
+
+    if (allowBackend && currentModelSource === 'backend' && backendModelFetcher && normalizedFileName) {
+        return backendModelFetcher(normalizedFileName);
+    }
 
     // In local upload context: try local files first
     if (isLocalUploadContext && normalizedFileName) {
@@ -4236,6 +4274,11 @@ function fetchModelFromFile(fileName) {
             }
             return resp.json();
         });
+}
+
+/** Registers the fetcher used for backend-loaded module references. */
+function setBackendModelFetcher(fetcher) {
+    backendModelFetcher = typeof fetcher === 'function' ? fetcher : null;
 }
 
 // ============================================================================
@@ -4276,6 +4319,7 @@ function buildModelListUI() {
     panel.appendChild(ul);
 
     updateModelListUI();
+        updateModuleNavigationUI();
 }
 
 /**
@@ -4316,6 +4360,7 @@ function initModelListToggle() {
                 panel.dataset.initialized = 'true';
             } else {
                 updateModelListUI();
+                    updateModuleNavigationUI();
             }
         }
     });
@@ -4846,6 +4891,7 @@ function loadLocalModelFile(file) {
         .then(json => {
             currentModelFile = normalizeRelativePath(file.webkitRelativePath || file.name) || 'local-upload.json';
             moduleNavigationState.stack = [];
+            setCurrentModelSource('local');
             loadModelFromObject(json);
             updateModuleNavigationUI();
         })
@@ -5384,6 +5430,10 @@ export {
     currentSelectedConnectionIndex,
     modelData,
     currentModelFile,
+    currentModelSource,
+    currentBackendModelId,
+        setBackendModelFetcher,
+    loadBackendModel,
     getModulePath,
     getPlaybackContext
 };

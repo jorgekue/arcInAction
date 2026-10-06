@@ -21,6 +21,12 @@
     background: rgba(255, 255, 255, 0.15);
 }
 
+#chatToggleBtn:disabled,
+#backend-model-toggle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 #chat-panel {
     position: absolute;
     top: 38px;
@@ -149,6 +155,117 @@
     border: 0;
 }
 
+#backend-model-widget {
+    position: fixed;
+    right: 10px;
+    bottom: 40px;
+    z-index: 35;
+    font-family: sans-serif;
+    font-size: 12px;
+}
+
+#backend-model-toggle,
+#backend-model-close,
+#backend-load-models,
+.backend-model-option {
+    border: 1px solid #666;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    padding: 5px 8px;
+    font: inherit;
+    cursor: pointer;
+}
+
+#backend-model-toggle:hover,
+#backend-model-close:hover,
+.backend-model-option:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+#backend-model-panel {
+    position: absolute;
+    right: 0;
+    bottom: 34px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: min(320px, calc(100vw - 20px));
+    max-height: min(70vh, 520px);
+    box-sizing: border-box;
+    overflow-y: auto;
+    padding: 9px;
+    background: rgba(0, 0, 0, 0.86);
+    color: #fff;
+    border: 1px solid #666;
+    border-radius: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+#backend-model-panel[hidden] {
+    display: none;
+}
+
+#backend-model-panel[hidden] {
+    display: none;
+}
+
+.backend-model-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 30px;
+    border-bottom: 1px solid #555;
+}
+
+#backend-model-close {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    font-size: 18px;
+}
+
+#backend-connection-form {
+    display: grid;
+    gap: 5px;
+}
+
+#backend-connection-form input {
+    min-width: 0;
+    padding: 6px 7px;
+    border: 1px solid #666;
+    border-radius: 3px;
+    background: #1e1e1e;
+    color: #fff;
+    font: inherit;
+}
+
+#backend-load-models {
+    justify-self: start;
+}
+
+#backend-model-status {
+    min-height: 1em;
+    color: #ddd;
+    overflow-wrap: anywhere;
+}
+
+#backend-model-list {
+    display: grid;
+    gap: 5px;
+}
+
+.backend-model-option {
+    width: 100%;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+#backend-model-panel :focus-visible,
+#backend-model-toggle:focus-visible {
+    outline: 2px solid #75b9ed;
+    outline-offset: 2px;
+}
+
 @media (max-width: 480px) {
     #chat-widget {
         top: 46px;
@@ -157,5 +274,10 @@
 
     #chat-panel {
         height: min(420px, calc(100vh - 100px));
+    }
+
+    #backend-model-widget {
+        right: 8px;
+        bottom: 40px;
     }
 }

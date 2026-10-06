@@ -1,5 +1,7 @@
 import { applyViewerActions } from './viewer-actions.js';
 import { buildViewerContext } from './viewer-context.js';
+import { currentModelSource } from './viewer.js';
+import { getBackendChatToken } from './backend-models.js';
 
 const chatToggleButton = document.getElementById('chatToggleBtn');
 const chatCloseButton = document.getElementById('chatCloseBtn');
@@ -68,6 +70,15 @@ chatForm.addEventListener('submit', event => {
     appendMessage('user', message);
     chatInput.value = '';
 
+    if (currentModelSource !== 'backend') {
+        appendMessage('warning', 'Load a model from a backend before using chat.');
+        return;
+    }
+    if (!getBackendChatToken()) {
+        appendMessage('warning', 'Enter a chat token in the backend model panel before sending a question.');
+        return;
+    }
+
     const context = buildViewerContext();
     const response = getMockResponse(message, context);
     appendMessage('assistant', response.answer);
@@ -75,6 +86,14 @@ chatForm.addEventListener('submit', event => {
     const result = applyViewerActions(response.actions);
     result.warnings.forEach(warning => appendMessage('warning', warning));
 });
+
+/** Enables chat only while a backend-provided model is active. */
+/** Enables chat only while a backend-provided model is active. */
+function syncChatAvailability() {
+    const isAvailable = currentModelSource === 'backend';
+    chatToggleButton.disabled = !isAvailable;
+    if (!isAvailable && !chatPanel.hidden) setChatPanelOpen(false);
+}
 
 /** Opens or closes the panel and synchronizes its accessibility state. */
 function setChatPanelOpen(isOpen) {
@@ -91,3 +110,6 @@ chatCloseButton.addEventListener('click', () => {
     setChatPanelOpen(false);
     chatToggleButton.focus();
 });
+
+window.addEventListener('viewer-model-source-change', syncChatAvailability);
+syncChatAvailability();
