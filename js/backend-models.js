@@ -5,24 +5,26 @@ const closeButton = document.getElementById('backend-model-close');
 const panel = document.getElementById('backend-model-panel');
 const connectionForm = document.getElementById('backend-connection-form');
 const backendUrlInput = document.getElementById('backend-base-url');
-const chatTokenInput = document.getElementById('backend-chat-token');
+const llmApiKeyInput = document.getElementById('llm-api-key');
 const loadModelsButton = document.getElementById('backend-load-models');
 const statusElement = document.getElementById('backend-model-status');
 const modelList = document.getElementById('backend-model-list');
 
 let backendBaseUrl = '';
-let backendChatToken = '';
+let llmApiKey = '';
 
 /** Normalizes and validates a user-entered backend base URL. */
 function normalizeBackendUrl(value) {
     const url = new URL(value.trim());
-    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
-        throw new Error('Enter a valid HTTP or HTTPS backend URL without credentials or query parameters.');
+    const isLoopbackHost = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+    const usesAllowedProtocol = url.protocol === 'https:' || (url.protocol === 'http:' && isLoopbackHost);
+    if (!usesAllowedProtocol || url.username || url.password || url.search || url.hash) {
+        throw new Error('Use HTTPS for remote backends. HTTP is allowed only for localhost.');
     }
     return url.href.replace(/\/+$/, '');
 }
 
-/** Requests JSON from a backend endpoint without sending the chat token. */
+/** Requests JSON from a backend endpoint without sending the LLM key. */
 async function fetchBackendJson(path) {
     const response = await fetch(`${backendBaseUrl}${path}`, {
         headers: { Accept: 'application/json' }
@@ -105,9 +107,14 @@ async function selectBackendModel(modelId, button) {
     }
 }
 
-/** Returns the optional in-memory token for the chat endpoint. */
-export function getBackendChatToken() {
-    return backendChatToken;
+/** Returns the optional LLM key kept in this page's memory. */
+export function getLlmApiKey() {
+    return llmApiKey;
+}
+
+/** Returns the configured backend base URL. */
+export function getBackendBaseUrl() {
+    return backendBaseUrl;
 }
 
 setBackendModelFetcher(fetchBackendModelById);
@@ -116,15 +123,15 @@ connectionForm.addEventListener('submit', event => {
     event.preventDefault();
     try {
         backendBaseUrl = normalizeBackendUrl(backendUrlInput.value);
-        backendChatToken = chatTokenInput.value;
+        llmApiKey = llmApiKeyInput.value;
         loadBackendModels();
     } catch (error) {
         statusElement.textContent = error instanceof Error ? error.message : String(error);
     }
 });
 
-chatTokenInput.addEventListener('input', () => {
-    backendChatToken = chatTokenInput.value;
+llmApiKeyInput.addEventListener('input', () => {
+    llmApiKey = llmApiKeyInput.value;
 });
 
 toggleButton.addEventListener('click', () => {

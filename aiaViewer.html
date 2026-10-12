@@ -65,8 +65,8 @@
             <form id="backend-connection-form">
                 <label for="backend-base-url">Backend URL</label>
                 <input id="backend-base-url" name="backendUrl" type="url" placeholder="https://host.example" required>
-                <label for="backend-chat-token">Chat token (optional)</label>
-                <input id="backend-chat-token" name="chatToken" type="password" autocomplete="off">
+                <label for="llm-api-key">LLM API key (optional)</label>
+                <input id="llm-api-key" name="llmApiKey" type="password" autocomplete="off" spellcheck="false">
                 <button id="backend-load-models" type="submit">Load models</button>
             </form>
             <div id="backend-model-status" role="status" aria-live="polite"></div>

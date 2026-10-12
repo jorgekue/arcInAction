@@ -1,7 +1,8 @@
 import { applyViewerActions } from './viewer-actions.js';
 import { buildViewerContext } from './viewer-context.js';
 import { currentModelSource } from './viewer.js';
-import { getBackendChatToken } from './backend-models.js';
+import { getLlmApiKey } from './backend-models.js';
+import { sendChatRequest } from './chat-client.js';
 
 const chatToggleButton = document.getElementById('chatToggleBtn');
 const chatCloseButton = document.getElementById('chatCloseBtn');
@@ -62,7 +63,7 @@ function appendMessage(role, text) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-chatForm.addEventListener('submit', event => {
+chatForm.addEventListener('submit', async event => {
     event.preventDefault();
     const message = chatInput.value.trim();
     if (!message) return;
@@ -74,20 +75,22 @@ chatForm.addEventListener('submit', event => {
         appendMessage('warning', 'Load a model from a backend before using chat.');
         return;
     }
-    if (!getBackendChatToken()) {
-        appendMessage('warning', 'Enter a chat token in the backend model panel before sending a question.');
-        return;
-    }
-
     const context = buildViewerContext();
-    const response = getMockResponse(message, context);
-    appendMessage('assistant', response.answer);
+    try {
+        const llmApiKey = getLlmApiKey();
+        const response = llmApiKey
+            ? await sendChatRequest(message, context, llmApiKey)
+            : getMockResponse(message, context);
+        appendMessage('assistant', response.answer);
+        (response.warnings || []).forEach(warning => appendMessage('warning', warning));
 
-    const result = applyViewerActions(response.actions);
-    result.warnings.forEach(warning => appendMessage('warning', warning));
+        const result = applyViewerActions(response.actions);
+        result.warnings.forEach(warning => appendMessage('warning', warning));
+    } catch (error) {
+        appendMessage('warning', error instanceof Error ? error.message : String(error));
+    }
 });
 
-/** Enables chat only while a backend-provided model is active. */
 /** Enables chat only while a backend-provided model is active. */
 function syncChatAvailability() {
     const isAvailable = currentModelSource === 'backend';

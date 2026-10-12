@@ -9,3 +9,7 @@ plantuml-components-context/
 components/
 models/
 planning/
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/data/models/
