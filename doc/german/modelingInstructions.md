@@ -415,6 +415,8 @@ Globale Datenfluss‑Einstellungen (optional, im JSON‑Root unter `settings`):
 
 Die mitwandernden Datenfluss-Labels behalten beim Zoomen eine konstante Bildschirmgröße mit etwa 39 Pixeln Zeilenhöhe und 8 Pixeln Abstand oberhalb der Kugel. Das gilt unabhängig von `followFlowCamera`. Komponenten- und Ebenenbeschriftungen sowie die im Modell angegebenen Texte und Zeilenumbrüche bleiben unverändert.
 
+Bei `followFlowCamera` werden zwei gegenüberliegende schräge Ansichten anhand von 32 Stichproben entlang des Verbindungspfads auf Verdeckung durch sichtbare Komponenten verglichen. Die gegenüberliegende Seite wird nur gewählt, wenn sie mindestens drei Stichproben weniger verdeckt. Beschriftungen werden nicht als Hindernisse berücksichtigt. Das reduziert Verdeckungen, garantiert aber keinen vollständig freien Blick und prüft nicht den Weg der Kamerafahrt.
+
 Hinweis zu Standardeinstellungen:
 
 - Alle oben genannten Defaults greifen nur, wenn das jeweilige Setting in der Modell‑Datei nicht gesetzt ist.

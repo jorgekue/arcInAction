@@ -4687,6 +4687,27 @@ function calculateFlowCameraView(connObject, viewCamera = camera) {
         viewDirection.add(new THREE.Vector3(0, 0.55, 0.45)).normalize();
     }
 
+    const oppositeDirection = new THREE.Vector3(-viewDirection.x, viewDirection.y, -viewDirection.z);
+    const primaryView = fitFlowCameraView(viewDirection, target, framingPoints, viewCamera);
+    const oppositeView = fitFlowCameraView(oppositeDirection, target, framingPoints, viewCamera);
+    if (!primaryView || !oppositeView) return primaryView;
+
+    const occluders = [];
+    for (const { mesh } of componentMeshes.values()) {
+        mesh.updateWorldMatrix(true, true);
+        mesh.traverseVisible(object => {
+            if (object.isMesh && object.geometry?.type !== 'TextGeometry') {
+                occluders.push(object);
+            }
+        });
+    }
+
+    const primaryOcclusion = getFlowPathOcclusion(primaryView.position, pathPoints, occluders);
+    const oppositeOcclusion = getFlowPathOcclusion(oppositeView.position, pathPoints, occluders);
+    return oppositeOcclusion + 2 < primaryOcclusion ? oppositeView : primaryView;
+}
+
+function fitFlowCameraView(viewDirection, target, framingPoints, viewCamera) {
     const right = new THREE.Vector3().crossVectors(viewCamera.up, viewDirection).normalize();
     const up = new THREE.Vector3().crossVectors(viewDirection, right).normalize();
     const verticalTangent = Math.tan(THREE.MathUtils.degToRad(viewCamera.getEffectiveFOV()) / 2);
@@ -4713,6 +4734,27 @@ function calculateFlowCameraView(connObject, viewCamera = camera) {
         target,
         distance
     };
+}
+
+function getFlowPathOcclusion(position, pathPoints, occluders) {
+    if (occluders.length === 0 || getPathLength(pathPoints) < 0.000001) return 0;
+
+    const raycaster = new THREE.Raycaster();
+    const sampleCount = 32;
+    let occludedSamples = 0;
+    for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
+        const point = getPointOnPath(pathPoints, (sampleIndex + 0.5) / sampleCount);
+        const direction = point.sub(position);
+        const distance = direction.length();
+        if (distance < 0.02) continue;
+
+        raycaster.set(position, direction.divideScalar(distance));
+        raycaster.far = distance - 0.02;
+        if (raycaster.intersectObjects(occluders, false).length > 0) {
+            occludedSamples++;
+        }
+    }
+    return occludedSamples;
 }
 
 /**
