@@ -262,6 +262,8 @@ Damit kann man:
 
 ## Steuerung der Datenfluss‑Animation
 
+Bei aktiviertem `followFlowCamera` richtet der Viewer die Kamera automatisch auf jede Verbindung aus und fährt vor dem Datenfluss mit der unter `flowCameraTransitionDuration` konfigurierten Dauer weich in die Ansicht.
+
 Die Animation wird über das Schalterfeld **unten mittig** gesteuert:
 
 - Panelaufbau (oben → unten): Current-Component-Text, Steuerungsbuttons, Positions-Slider.

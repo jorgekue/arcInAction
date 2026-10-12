@@ -267,6 +267,8 @@ This allows you to:
 
 ## Controlling the Data Flow Animation
 
+When `followFlowCamera` is enabled, the viewer automatically frames each connection and smoothly moves to that view before the data flow, using the duration configured by `flowCameraTransitionDuration`.
+
 The animation is controlled via the control panel **in the lower center**:
 
 - Panel layout (top → bottom): current component text, control buttons, position slider.
