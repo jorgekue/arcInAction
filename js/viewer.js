@@ -56,9 +56,10 @@ const modelFlowTimingSettings = {
     flowSpeed: 2.5
 };
 
-/** @type {{followFlowCamera: boolean, animateComponents: boolean, selectConnectionsAndComponents: boolean, showComponentPosition: boolean}} Global visual settings from model.settings */
+/** @type {{followFlowCamera: boolean, flowCameraTransitionDuration: number, animateComponents: boolean, selectConnectionsAndComponents: boolean, showComponentPosition: boolean}} Global visual settings from model.settings */
 const modelVisualSettings = {
     followFlowCamera: false,
+    flowCameraTransitionDuration: 1.5,
     animateComponents: false,
     selectConnectionsAndComponents: false,
     showComponentPosition: false
@@ -3954,6 +3955,7 @@ function applyFlowTimingSettingsFromModel(model) {
     modelFlowTimingSettings.flowDurationMin = 3;
     modelFlowTimingSettings.flowSpeed = 2.5;
     modelVisualSettings.followFlowCamera = false;
+    modelVisualSettings.flowCameraTransitionDuration = 1.5;
     modelVisualSettings.animateComponents = false;
     modelVisualSettings.selectConnectionsAndComponents = false;
     modelVisualSettings.showComponentPosition = false;
@@ -3978,6 +3980,11 @@ function applyFlowTimingSettingsFromModel(model) {
 
     if (typeof settings.followFlowCamera === 'boolean') {
         modelVisualSettings.followFlowCamera = settings.followFlowCamera;
+    }
+
+    const parsedCameraTransitionDuration = Number(settings.flowCameraTransitionDuration);
+    if (Number.isFinite(parsedCameraTransitionDuration) && parsedCameraTransitionDuration > 0) {
+        modelVisualSettings.flowCameraTransitionDuration = parsedCameraTransitionDuration;
     }
 
     if (typeof settings.animateComponents === 'boolean') {
@@ -4061,7 +4068,7 @@ function startDataFlowOnConnection(connObject, options = {}) {
     pendingDataFlow = { connObject, options };
     cameraAnimation = {
         t: 0,
-        duration: 0.8,
+        duration: modelVisualSettings.flowCameraTransitionDuration,
         fromPos: camera.position.clone(),
         fromTarget: controls.target.clone(),
         toPos: view.position,
@@ -4496,11 +4503,12 @@ function initViewPanel() {
     const chkGrid = document.getElementById('chk-view-grid');
     const chkComponentPosition = document.getElementById('chk-view-component-position');
     const chkAnimateComponents = document.getElementById('chk-view-animate-components');
+    const chkFollowFlowCamera = document.getElementById('chk-view-follow-flow-camera');
     const devControls = document.getElementById('dev-controls');
     const chkDevMode = document.getElementById('chk-dev-mode');
     const btnDevExport = document.getElementById('btn-dev-export');
 
-    if (!chkGrid || !chkComponentPosition || !chkAnimateComponents || !devControls || !chkDevMode || !btnDevExport) {
+    if (!chkGrid || !chkComponentPosition || !chkAnimateComponents || !chkFollowFlowCamera || !devControls || !chkDevMode || !btnDevExport) {
         console.warn('view panel controls not found');
         return;
     }
@@ -4511,6 +4519,7 @@ function initViewPanel() {
     chkGrid.checked = false;
     chkComponentPosition.checked = !!modelVisualSettings.showComponentPosition;
     chkAnimateComponents.checked = !!modelVisualSettings.animateComponents;
+    chkFollowFlowCamera.checked = !!modelVisualSettings.followFlowCamera;
     chkDevMode.checked = false;
     setDeveloperModeEnabled(false);
     devControls.style.display = modelDeveloperSettings.showDeveloperControls ? 'inline-flex' : 'none';
@@ -4543,6 +4552,10 @@ function initViewPanel() {
         modelVisualSettings.animateComponents = chkAnimateComponents.checked;
     });
 
+    chkFollowFlowCamera.addEventListener('change', () => {
+        modelVisualSettings.followFlowCamera = chkFollowFlowCamera.checked;
+    });
+
     chkDevMode.addEventListener('change', () => {
         setDeveloperModeEnabled(chkDevMode.checked);
     });
@@ -4562,6 +4575,7 @@ function initViewPanel() {
 function syncViewPanelStateFromSettings() {
     const chkComponentPosition = document.getElementById('chk-view-component-position');
     const chkAnimateComponents = document.getElementById('chk-view-animate-components');
+    const chkFollowFlowCamera = document.getElementById('chk-view-follow-flow-camera');
     const devControls = document.getElementById('dev-controls');
     const chkDevMode = document.getElementById('chk-dev-mode');
 
@@ -4571,6 +4585,10 @@ function syncViewPanelStateFromSettings() {
 
     if (chkAnimateComponents) {
         chkAnimateComponents.checked = !!modelVisualSettings.animateComponents;
+    }
+
+    if (chkFollowFlowCamera) {
+        chkFollowFlowCamera.checked = !!modelVisualSettings.followFlowCamera;
     }
 
     if (devControls) {
@@ -4716,7 +4734,7 @@ function fitFlowCameraView(viewDirection, target, framingPoints, viewCamera) {
         return null;
     }
 
-    const padding = 1.2;
+    const padding = 1.5;
     let distance = 4;
     for (const point of framingPoints) {
         const relative = point.clone().sub(target);
