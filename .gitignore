@@ -8,3 +8,5 @@ model-files.properties
 plantuml-components-context/
 components/
 models/
+backend/.env
+planning/chat-interface-plan.md

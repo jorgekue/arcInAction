@@ -56,8 +56,9 @@ const modelFlowTimingSettings = {
     flowSpeed: 2.5
 };
 
-/** @type {{animateComponents: boolean, selectConnectionsAndComponents: boolean, showComponentPosition: boolean}} Global visual settings from model.settings */
+/** @type {{followFlowCamera: boolean, animateComponents: boolean, selectConnectionsAndComponents: boolean, showComponentPosition: boolean}} Global visual settings from model.settings */
 const modelVisualSettings = {
+    followFlowCamera: false,
     animateComponents: false,
     selectConnectionsAndComponents: false,
     showComponentPosition: false
@@ -1341,6 +1342,8 @@ let currentCameraViewId = 'iso';
 
 /** @type {Object|null} Current camera animation state */
 let cameraAnimation = null;
+
+let pendingDataFlow = null;
 
 // ============================================================================
 // Scene Setup: Scene, Camera, Renderer
@@ -2872,6 +2875,8 @@ function clearHighlight() {
  * Resets component data structures.
  */
 function clearScene() {
+    stopAutoPlay();
+    cameraAnimation = null;
     stopDeveloperPointDrag();
     clearDeveloperPointHandles();
     clearDeveloperInsertMarker();
@@ -3863,6 +3868,9 @@ function updateCurrentConnectionMarker() {
  * Orders connections by group order and connection order within groups.
  */
 function rebuildConnectionSequence() {
+    if (modelVisualSettings.followFlowCamera) {
+        stopAutoPlay();
+    }
     connectionSequence = [];
     currentConnectionIndex = 0;
     currentSelectedConnectionIndex = -1;
@@ -3945,6 +3953,7 @@ function rebuildConnectionSequence() {
 function applyFlowTimingSettingsFromModel(model) {
     modelFlowTimingSettings.flowDurationMin = 3;
     modelFlowTimingSettings.flowSpeed = 2.5;
+    modelVisualSettings.followFlowCamera = false;
     modelVisualSettings.animateComponents = false;
     modelVisualSettings.selectConnectionsAndComponents = false;
     modelVisualSettings.showComponentPosition = false;
@@ -3965,6 +3974,10 @@ function applyFlowTimingSettingsFromModel(model) {
     }
     if (Number.isFinite(parsedSettingsSpeed) && parsedSettingsSpeed > 0) {
         modelFlowTimingSettings.flowSpeed = parsedSettingsSpeed;
+    }
+
+    if (typeof settings.followFlowCamera === 'boolean') {
+        modelVisualSettings.followFlowCamera = settings.followFlowCamera;
     }
 
     if (typeof settings.animateComponents === 'boolean') {
@@ -4031,6 +4044,40 @@ function getPathLength(points) {
  * - viewer default (3s)
  */
 function startDataFlowOnConnection(connObject, options = {}) {
+    cancelPendingFlowCamera();
+    const view = modelVisualSettings.followFlowCamera ? calculateFlowCameraView(connObject) : null;
+    if (!view) {
+        createDataFlowOnConnection(connObject, options);
+        return;
+    }
+
+    currentCameraViewId = 'flow';
+    updateCameraControlsUI();
+    if (camera.position.distanceTo(view.position) < 0.05 && controls.target.distanceTo(view.target) < 0.05) {
+        createDataFlowOnConnection(connObject, options);
+        return;
+    }
+
+    pendingDataFlow = { connObject, options };
+    cameraAnimation = {
+        t: 0,
+        duration: 0.8,
+        fromPos: camera.position.clone(),
+        fromTarget: controls.target.clone(),
+        toPos: view.position,
+        toTarget: view.target,
+        isFlowCamera: true
+    };
+}
+
+function cancelPendingFlowCamera() {
+    pendingDataFlow = null;
+    if (cameraAnimation?.isFlowCamera) {
+        cameraAnimation = null;
+    }
+}
+
+function createDataFlowOnConnection(connObject, options = {}) {
     const pathPoints = (connObject.userData && connObject.userData.pathPoints) || null;
     const conn = connObject.userData && connObject.userData.connection;
 
@@ -4077,7 +4124,6 @@ function startDataFlowOnConnection(connObject, options = {}) {
     const labelText = conn && conn.label;
     if (labelText) {
         labelSprite = createTextSprite(labelText);
-        labelSprite.position.set(0, 0.5, 0);
         flowMesh.add(labelSprite);
     }
     
@@ -4099,6 +4145,7 @@ function startDataFlowOnConnection(connObject, options = {}) {
         direction,
         activeComponentIds
     });
+    updateFlowControlButtons();
 }
 
 // ============================================================================
@@ -4570,7 +4617,7 @@ function updateFlowControlButtons() {
         btnEnd.disabled = true;
     } else {
         btnPlay.disabled = !hasConnections;
-        btnStop.disabled = true;
+        btnStop.disabled = !(pendingDataFlow || (modelVisualSettings.followFlowCamera && activeFlows.length > 0));
         btnStart.disabled = !hasConnections;
         btnPrev.disabled = !hasConnections;
         btnReplay.disabled = !hasConnections || currentSelectedConnectionIndex < 0;
@@ -4585,6 +4632,88 @@ function updateFlowControlButtons() {
 // ============================================================================
 // Camera Controls
 // ============================================================================
+
+function calculateFlowCameraView(connObject, viewCamera = camera) {
+    const connection = connObject?.userData?.connection;
+    const pathPoints = connObject?.userData?.pathPoints;
+    const fromMesh = componentMeshes.get(connection?.from)?.mesh;
+    const toMesh = componentMeshes.get(connection?.to)?.mesh;
+
+    if (!fromMesh || !toMesh || !Array.isArray(pathPoints) || pathPoints.length < 2) {
+        return null;
+    }
+
+    const fromCenter = fromMesh.getWorldPosition(new THREE.Vector3());
+    const toCenter = toMesh.getWorldPosition(new THREE.Vector3());
+    const bounds = new THREE.Box3();
+    const framingPoints = [];
+
+    for (const mesh of new Set([fromMesh, toMesh])) {
+        const componentBounds = new THREE.Box3().setFromObject(mesh);
+        if (componentBounds.isEmpty()) {
+            componentBounds.expandByPoint(mesh.getWorldPosition(new THREE.Vector3()));
+        }
+        bounds.union(componentBounds);
+        for (const pointX of [componentBounds.min.x, componentBounds.max.x]) {
+            for (const pointY of [componentBounds.min.y, componentBounds.max.y]) {
+                for (const pointZ of [componentBounds.min.z, componentBounds.max.z]) {
+                    framingPoints.push(new THREE.Vector3(pointX, pointY, pointZ));
+                }
+            }
+        }
+    }
+
+    for (const point of pathPoints) {
+        if (![point.x, point.y, point.z].every(Number.isFinite)) {
+            return null;
+        }
+        bounds.expandByPoint(point);
+        framingPoints.push(point.clone());
+    }
+
+    const target = bounds.getCenter(new THREE.Vector3());
+    const horizontalDirection = toCenter.clone().sub(fromCenter);
+    horizontalDirection.y = 0;
+    let viewDirection;
+
+    if (horizontalDirection.lengthSq() < 0.000001) {
+        viewDirection = new THREE.Vector3(1, 0.65, 0.9).normalize();
+    } else {
+        horizontalDirection.normalize();
+        viewDirection = new THREE.Vector3(-horizontalDirection.z, 0, horizontalDirection.x);
+        if (viewDirection.z < 0 || (Math.abs(viewDirection.z) < 0.000001 && viewDirection.x < 0)) {
+            viewDirection.negate();
+        }
+        viewDirection.add(new THREE.Vector3(0, 0.55, 0.45)).normalize();
+    }
+
+    const right = new THREE.Vector3().crossVectors(viewCamera.up, viewDirection).normalize();
+    const up = new THREE.Vector3().crossVectors(viewDirection, right).normalize();
+    const verticalTangent = Math.tan(THREE.MathUtils.degToRad(viewCamera.getEffectiveFOV()) / 2);
+    const horizontalTangent = verticalTangent * viewCamera.aspect;
+    if (!(verticalTangent > 0) || !(horizontalTangent > 0) || right.lengthSq() < 0.000001) {
+        return null;
+    }
+
+    const padding = 1.2;
+    let distance = 4;
+    for (const point of framingPoints) {
+        const relative = point.clone().sub(target);
+        const depth = relative.dot(viewDirection);
+        distance = Math.max(
+            distance,
+            depth + padding * Math.abs(relative.dot(right)) / horizontalTangent,
+            depth + padding * Math.abs(relative.dot(up)) / verticalTangent,
+            depth + viewCamera.near + 0.5
+        );
+    }
+
+    return {
+        position: target.clone().addScaledVector(viewDirection, distance),
+        target,
+        distance
+    };
+}
 
 /**
  * Builds the camera control buttons for switching between preset views.
@@ -4641,6 +4770,10 @@ function setCameraView(viewId, animate = true) {
         return;
     }
 
+    if (modelVisualSettings.followFlowCamera || pendingDataFlow) {
+        stopAutoPlay();
+    }
+    cameraAnimation = null;
     currentCameraViewId = viewId;
     updateCameraControlsUI();
 
@@ -4675,6 +4808,12 @@ renderer.domElement.addEventListener('pointermove', onDeveloperPointerMove);
 renderer.domElement.addEventListener('pointerup', onDeveloperPointerUp);
 renderer.domElement.addEventListener('pointercancel', onDeveloperPointerUp);
 renderer.domElement.addEventListener('dblclick', onModuleComponentDoubleClick);
+controls.addEventListener('start', () => {
+    if (modelVisualSettings.followFlowCamera || pendingDataFlow) {
+        stopAutoPlay();
+        cameraAnimation = null;
+    }
+});
 window.addEventListener('keydown', onDeveloperKeyDown);
 window.addEventListener('keydown', onModuleNavigationKeyDown);
 
@@ -4694,16 +4833,22 @@ function updateCameraAnimation(delta) {
 
     cameraAnimation.t += delta / cameraAnimation.duration;
     const t = Math.min(cameraAnimation.t, 1);
+    const progress = cameraAnimation.isFlowCamera ? t * t * (3 - 2 * t) : t;
 
-    const pos = cameraAnimation.fromPos.clone().lerp(cameraAnimation.toPos, t);
-    const target = cameraAnimation.fromTarget.clone().lerp(cameraAnimation.toTarget, t);
+    const pos = cameraAnimation.fromPos.clone().lerp(cameraAnimation.toPos, progress);
+    const target = cameraAnimation.fromTarget.clone().lerp(cameraAnimation.toTarget, progress);
 
     camera.position.copy(pos);
     controls.target.copy(target);
     controls.update();
 
     if (t >= 1) {
+        const flow = cameraAnimation.isFlowCamera ? pendingDataFlow : null;
         cameraAnimation = null;
+        pendingDataFlow = null;
+        if (flow) {
+            createDataFlowOnConnection(flow.connObject, flow.options);
+        }
     }
 }
 
@@ -4715,11 +4860,13 @@ function animate() {
     requestAnimationFrame(animate);
 
     const delta = clock.getDelta();
+    const wasPreparingFlow = pendingDataFlow !== null;
     updateCameraAnimation(delta);
-    const hasRunningFlows = updateDataFlows(delta);
+    const hasRunningFlows = updateDataFlows(wasPreparingFlow ? 0 : delta);
     updateAutoPlay(delta, hasRunningFlows);
 
     controls.update();
+    updateDataFlowLabels();
     renderer.render(scene, camera);
 }
 
@@ -4856,6 +5003,7 @@ fileInput.addEventListener('change', event => {
  */
 function updateDataFlows(delta) {
     let anyRunning = false;
+    let playbackChanged = false;
 
     for (let i = activeFlows.length - 1; i >= 0; i--) {
         const flow = activeFlows[i];
@@ -4869,6 +5017,7 @@ function updateDataFlows(delta) {
             scene.remove(flow.object3D);   // labelSprite is attached to object3D
             deactivateComponentsForFlow(flow.activeComponentIds);
             activeFlows.splice(i, 1);
+            playbackChanged = true;
             continue;
         }
 
@@ -4885,7 +5034,40 @@ function updateDataFlows(delta) {
         const pos = getPointOnPath(flow.pathPoints, t);
         flow.object3D.position.copy(pos);
     }
+    if (playbackChanged) {
+        updateFlowControlButtons();
+    }
     return anyRunning;
+}
+
+function updateDataFlowLabels() {
+    const viewportHeight = renderer.domElement.clientHeight;
+    if (viewportHeight <= 0) return;
+
+    camera.updateMatrixWorld();
+    const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+    const pixelScale = 39 / 18;
+    const gapPixels = 8;
+
+    for (const flow of activeFlows) {
+        const label = flow.labelSprite;
+        if (!label) continue;
+
+        const image = label.material.map.image;
+        const worldPosition = flow.object3D.getWorldPosition(new THREE.Vector3());
+        const depth = -worldPosition.clone().applyMatrix4(camera.matrixWorldInverse).z;
+        label.visible = depth > camera.near;
+        if (!label.visible) continue;
+
+        const unitsPerPixel = 2 * depth / (camera.projectionMatrix.elements[5] * viewportHeight);
+        const labelHeight = image.height * pixelScale * unitsPerPixel;
+        label.scale.set(image.width * pixelScale * unitsPerPixel, labelHeight, 1);
+
+        const sphereRadius = flow.object3D.geometry.parameters.radius;
+        const offset = sphereRadius + labelHeight / 2 + gapPixels * unitsPerPixel;
+        const labelPosition = worldPosition.addScaledVector(cameraUp, offset);
+        label.position.copy(flow.object3D.worldToLocal(labelPosition));
+    }
 }
 
 /**
@@ -4938,7 +5120,7 @@ function updateAutoPlay(delta, hasRunningFlows) {
     if (!flowController.isPlaying) return;
 
     // If a flow is still running, wait
-    if (hasRunningFlows) return;
+    if (hasRunningFlows || pendingDataFlow) return;
 
     // If all connections are done, stop
     if (currentConnectionIndex >= connectionSequence.length) {
@@ -4961,6 +5143,7 @@ function updateAutoPlay(delta, hasRunningFlows) {
  * Stops and removes all active data flow animations.
  */
 function stopAllFlows() {
+    cancelPendingFlowCamera();
     for (const flow of activeFlows) {
         scene.remove(flow.object3D);
         deactivateComponentsForFlow(flow.activeComponentIds);
