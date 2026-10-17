@@ -88,12 +88,12 @@ Konfigurierbare Historientiefe:
   "settings": {
     "developerMode": false,
     "undoRedoDepth": 50,
-    "animateComponents": false,
-    "showComponentPosition": false,
     "selectConnectionsAndComponents": false
   }
 }
 ```
+
+Kameraverhalten, Positionsmarkierungen und Komponentenanimation sowie die Sprachausgabe-Konfiguration werden im Settings-Dialog eingestellt und im Browser unter `localStorage` gespeichert. Die veralteten Modell-Settings `followFlowCamera`, `flowCameraTransitionDuration`, `animateComponents` und `showComponentPosition` werden ignoriert und können entfernt werden.
 
 ---
 

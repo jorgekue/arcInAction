@@ -88,12 +88,12 @@ Configurable history depth:
   "settings": {
     "developerMode": false,
     "undoRedoDepth": 50,
-    "animateComponents": false,
-    "showComponentPosition": false,
     "selectConnectionsAndComponents": false
   }
 }
 ```
+
+Camera behavior, component markers and animation, and speech-output preferences are configured in the viewer's Settings dialog and stored in browser `localStorage`. The legacy model keys `followFlowCamera`, `flowCameraTransitionDuration`, `animateComponents`, and `showComponentPosition` are ignored and may be removed.
 
 ---
 

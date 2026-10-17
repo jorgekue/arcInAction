@@ -9,6 +9,7 @@ import * as THREE from '../lib/three.module.js';
 import { OrbitControls } from '../lib/OrbitControls.js';
 import * as LABEL from './text-labels.js';
 import { TextGeometry } from '../lib/TextGeometry.js';
+import { dialogSections, dialogSettings, getSetting, resetSettings, setSetting } from './settings.js';
 
 // ============================================================================
 // Constants and Configuration
@@ -56,13 +57,9 @@ const modelFlowTimingSettings = {
     flowSpeed: 2.5
 };
 
-/** @type {{followFlowCamera: boolean, flowCameraTransitionDuration: number, animateComponents: boolean, selectConnectionsAndComponents: boolean, showComponentPosition: boolean}} Global visual settings from model.settings */
+/** @type {{selectConnectionsAndComponents: boolean}} Visual settings from model.settings */
 const modelVisualSettings = {
-    followFlowCamera: false,
-    flowCameraTransitionDuration: 1.5,
-    animateComponents: false,
-    selectConnectionsAndComponents: false,
-    showComponentPosition: false
+    selectConnectionsAndComponents: false
 };
 
 /** @type {{showDeveloperControls: boolean, undoRedoDepth: number}} Developer settings from model.settings */
@@ -2789,7 +2786,7 @@ function updateCurrentComponentIndicator(connection) {
         return;
     }
 
-    if (!modelVisualSettings.showComponentPosition) {
+    if (!getSetting('showComponentPosition')) {
         clearCurrentComponentMarker();
         return;
     }
@@ -3002,7 +2999,7 @@ function updateComponentFlowActivation(componentId, activate) {
  * @returns {Array<string>} Activated component IDs
  */
 function activateComponentsForConnection(connection) {
-    if (!modelVisualSettings.animateComponents) {
+    if (!getSetting('animateComponents')) {
         return [];
     }
 
@@ -3869,7 +3866,7 @@ function updateCurrentConnectionMarker() {
  * Orders connections by group order and connection order within groups.
  */
 function rebuildConnectionSequence() {
-    if (modelVisualSettings.followFlowCamera) {
+    if (getSetting('followFlowCamera')) {
         stopAutoPlay();
     }
     connectionSequence = [];
@@ -3943,22 +3940,17 @@ function rebuildConnectionSequence() {
 // ============================================================================
 
 /**
- * Applies global flow timing settings from model.settings.
+ * Applies model-specific flow timing and developer settings.
  * Supported settings:
  * - flowDurationMin: minimum duration in seconds
  * - flowSpeed: speed in grid units per second
- * - animateComponents: enables/disables active component highlighting
  * - selectConnectionsAndComponents: hides components not used by active connection groups
  * @param {Object} model - Model object
  */
 function applyFlowTimingSettingsFromModel(model) {
     modelFlowTimingSettings.flowDurationMin = 3;
     modelFlowTimingSettings.flowSpeed = 2.5;
-    modelVisualSettings.followFlowCamera = false;
-    modelVisualSettings.flowCameraTransitionDuration = 1.5;
-    modelVisualSettings.animateComponents = false;
     modelVisualSettings.selectConnectionsAndComponents = false;
-    modelVisualSettings.showComponentPosition = false;
     modelDeveloperSettings.showDeveloperControls = false;
     modelDeveloperSettings.undoRedoDepth = 50;
     developerEditHistory.maxDepth = 50;
@@ -3978,25 +3970,8 @@ function applyFlowTimingSettingsFromModel(model) {
         modelFlowTimingSettings.flowSpeed = parsedSettingsSpeed;
     }
 
-    if (typeof settings.followFlowCamera === 'boolean') {
-        modelVisualSettings.followFlowCamera = settings.followFlowCamera;
-    }
-
-    const parsedCameraTransitionDuration = Number(settings.flowCameraTransitionDuration);
-    if (Number.isFinite(parsedCameraTransitionDuration) && parsedCameraTransitionDuration > 0) {
-        modelVisualSettings.flowCameraTransitionDuration = parsedCameraTransitionDuration;
-    }
-
-    if (typeof settings.animateComponents === 'boolean') {
-        modelVisualSettings.animateComponents = settings.animateComponents;
-    }
-
     if (typeof settings.selectConnectionsAndComponents === 'boolean') {
         modelVisualSettings.selectConnectionsAndComponents = settings.selectConnectionsAndComponents;
-    }
-
-    if (typeof settings.showComponentPosition === 'boolean') {
-        modelVisualSettings.showComponentPosition = settings.showComponentPosition;
     }
 
     if (typeof settings.developerMode === 'boolean') {
@@ -4052,7 +4027,7 @@ function getPathLength(points) {
  */
 function startDataFlowOnConnection(connObject, options = {}) {
     cancelPendingFlowCamera();
-    const view = modelVisualSettings.followFlowCamera ? calculateFlowCameraView(connObject) : null;
+    const view = getSetting('followFlowCamera') ? calculateFlowCameraView(connObject) : null;
     if (!view) {
         createDataFlowOnConnection(connObject, options);
         return;
@@ -4068,7 +4043,7 @@ function startDataFlowOnConnection(connObject, options = {}) {
     pendingDataFlow = { connObject, options };
     cameraAnimation = {
         t: 0,
-        duration: modelVisualSettings.flowCameraTransitionDuration,
+        duration: getSetting('flowCameraTransitionDuration'),
         fromPos: camera.position.clone(),
         fromTarget: controls.target.clone(),
         toPos: view.position,
@@ -4359,6 +4334,254 @@ function initModelListToggle() {
     });
 }
 
+function syncSettingsDialogState() {
+    for (const setting of dialogSettings) {
+        const control = document.getElementById(setting.controlId);
+        if (!control) continue;
+
+        const value = getSetting(setting.key);
+        if (setting.type === 'checkbox') {
+            control.checked = value;
+        } else {
+            control.value = String(value);
+            if (setting.type === 'slider') {
+                const output = document.getElementById(`${setting.controlId}-value`);
+                if (output) output.textContent = `${value.toFixed(1)}${setting.unit || ''}`;
+            }
+        }
+    }
+
+    const showGrid = document.getElementById('setting-show-grid');
+    if (showGrid) showGrid.checked = !!gridHelper?.visible;
+}
+
+let speechVoices = [];
+let speechVoicesLoaded = false;
+let speechAvailable = true;
+
+function refreshSpeechVoiceOptions() {
+    const voiceSelect = document.getElementById('setting-speech-voice');
+    if (!voiceSelect) return;
+
+    const language = getSetting('speechLanguage');
+    const matchingVoices = speechVoices.filter(voice => voice.lang?.toLowerCase().startsWith(language));
+    const selectedVoice = getSetting('speechVoice');
+    voiceSelect.replaceChildren();
+
+    if (speechVoices.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = !speechAvailable
+            ? 'Speech synthesis unavailable'
+            : speechVoicesLoaded
+                ? 'No browser voices available'
+                : 'Loading browser voices…';
+        voiceSelect.appendChild(option);
+        voiceSelect.disabled = true;
+        return;
+    }
+
+    if (matchingVoices.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = `No ${language === 'de' ? 'German' : 'English'} voices available`;
+        voiceSelect.appendChild(option);
+        voiceSelect.disabled = true;
+        if (selectedVoice) setSetting('speechVoice', '');
+        return;
+    }
+
+    voiceSelect.disabled = false;
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Browser default';
+    voiceSelect.appendChild(defaultOption);
+
+    for (const voice of matchingVoices) {
+        const option = document.createElement('option');
+        option.value = voice.voiceURI || voice.name;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        voiceSelect.appendChild(option);
+    }
+
+    if (matchingVoices.some(voice => (voice.voiceURI || voice.name) === selectedVoice)) {
+        voiceSelect.value = selectedVoice;
+    } else if (selectedVoice) {
+        setSetting('speechVoice', '');
+        voiceSelect.value = '';
+    }
+}
+
+function initSpeechVoiceOptions() {
+    const speechSynthesis = window.speechSynthesis;
+    if (!speechSynthesis) {
+        speechVoices = [];
+        speechAvailable = false;
+        speechVoicesLoaded = true;
+        refreshSpeechVoiceOptions();
+        return;
+    }
+
+    const updateVoices = (eventReceived = false) => {
+        speechVoices = speechSynthesis.getVoices();
+        speechVoicesLoaded = speechVoices.length > 0 || eventReceived;
+        refreshSpeechVoiceOptions();
+    };
+
+    if (typeof speechSynthesis.addEventListener === 'function') {
+        speechSynthesis.addEventListener('voiceschanged', () => updateVoices(true));
+    } else {
+        speechSynthesis.onvoiceschanged = () => updateVoices(true);
+    }
+    updateVoices();
+    window.setTimeout(() => updateVoices(true), 1500);
+}
+
+function renderSettingsDialogControls() {
+    const host = document.getElementById('settings-sections');
+    if (!host) return;
+    host.replaceChildren();
+
+    for (const sectionDefinition of dialogSections) {
+        const section = document.createElement('section');
+        section.className = 'aia-settings-section';
+        const title = document.createElement('h3');
+        title.textContent = sectionDefinition.title;
+        section.appendChild(title);
+
+        if (sectionDefinition.includesCameraControls) {
+            const cameraRow = document.createElement('div');
+            cameraRow.className = 'aia-settings-camera';
+            const cameraLabel = document.createElement('span');
+            cameraLabel.textContent = 'Camera view';
+            const cameraControls = document.createElement('div');
+            cameraControls.id = 'settings-camera-controls';
+            cameraControls.className = 'settings-camera-controls';
+            cameraRow.append(cameraLabel, cameraControls);
+            section.appendChild(cameraRow);
+        }
+
+        if (sectionDefinition.includesGridToggle) {
+            const gridLabel = document.createElement('label');
+            gridLabel.className = 'aia-settings-checkbox';
+            const gridToggle = document.createElement('input');
+            gridToggle.type = 'checkbox';
+            gridToggle.id = 'setting-show-grid';
+            const gridText = document.createElement('span');
+            gridText.textContent = 'Show grid';
+            gridLabel.append(gridToggle, gridText);
+            section.appendChild(gridLabel);
+        }
+
+        for (const key of sectionDefinition.settingKeys) {
+            const setting = dialogSettings.find(item => item.key === key);
+            if (!setting) continue;
+
+            const label = document.createElement('label');
+            const controlClass = setting.type === 'slider' ? 'range' : setting.type;
+            label.className = `aia-settings-${controlClass}`;
+            const text = document.createElement('span');
+            text.textContent = setting.label;
+            const control = document.createElement(setting.type === 'select' ? 'select' : 'input');
+            control.id = setting.controlId;
+
+            if (setting.type === 'checkbox') {
+                control.type = 'checkbox';
+                label.append(control, text);
+            } else {
+                if (setting.type === 'slider') {
+                    control.type = 'range';
+                    control.min = String(setting.min);
+                    control.max = String(setting.max);
+                    control.step = String(setting.step);
+                } else {
+                    for (const optionData of setting.options || []) {
+                        const option = document.createElement('option');
+                        option.value = optionData.value;
+                        option.textContent = optionData.label;
+                        control.appendChild(option);
+                    }
+                }
+                label.append(text, control);
+                if (setting.type === 'slider') {
+                    const output = document.createElement('output');
+                    output.id = `${setting.controlId}-value`;
+                    output.htmlFor = setting.controlId;
+                    label.appendChild(output);
+                }
+            }
+            section.appendChild(label);
+        }
+
+        host.appendChild(section);
+    }
+}
+
+function initSettingsDialog() {
+    const toggleButton = document.getElementById('btn-settings-toggle');
+    const overlay = document.getElementById('settings-overlay');
+    const closeButton = document.getElementById('btn-settings-close');
+    const resetButton = document.getElementById('btn-settings-reset');
+
+    if (!toggleButton || !overlay || !closeButton || !resetButton) return;
+    renderSettingsDialogControls();
+    initSpeechVoiceOptions();
+
+    const close = () => {
+        overlay.style.display = 'none';
+        overlay.setAttribute('aria-hidden', 'true');
+        toggleButton.setAttribute('aria-expanded', 'false');
+    };
+    const open = () => {
+        syncSettingsDialogState();
+        overlay.style.display = 'flex';
+        overlay.setAttribute('aria-hidden', 'false');
+        toggleButton.setAttribute('aria-expanded', 'true');
+        closeButton.focus();
+    };
+    const toggle = () => overlay.style.display === 'flex' ? close() : open();
+
+    toggleButton.addEventListener('click', toggle);
+    closeButton.addEventListener('click', close);
+    document.getElementById('btn-impressum')?.addEventListener('click', close);
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) close();
+    });
+    window.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && overlay.style.display === 'flex') close();
+    });
+
+    for (const setting of dialogSettings) {
+        const control = document.getElementById(setting.controlId);
+        const eventName = setting.type === 'slider' ? 'input' : 'change';
+        control?.addEventListener(eventName, event => {
+            const value = setting.type === 'checkbox'
+                ? event.currentTarget.checked
+                : setting.type === 'slider'
+                    ? Number(event.currentTarget.value)
+                    : event.currentTarget.value;
+            setSetting(setting.key, value);
+            if (setting.key === 'speechLanguage') refreshSpeechVoiceOptions();
+            if (setting.key === 'showComponentPosition') updateCurrentConnectionMarker();
+            syncSettingsDialogState();
+        });
+    }
+
+    document.getElementById('setting-show-grid')?.addEventListener('change', event => {
+        setGridVisible(event.currentTarget.checked);
+    });
+
+    resetButton.addEventListener('click', () => {
+        resetSettings();
+        setGridVisible(false);
+        setCameraView('iso', true);
+        updateCurrentConnectionMarker();
+        syncViewPanelStateFromSettings();
+    });
+
+    syncSettingsDialogState();
+}
+
 
 /**
  * Initializes the info/impressum dialog overlay.
@@ -4500,26 +4723,16 @@ function updateFlowPositionControl() {
  * Initializes the view panel controls (grid toggle, etc.).
  */
 function initViewPanel() {
-    const chkGrid = document.getElementById('chk-view-grid');
-    const chkComponentPosition = document.getElementById('chk-view-component-position');
-    const chkAnimateComponents = document.getElementById('chk-view-animate-components');
-    const chkFollowFlowCamera = document.getElementById('chk-view-follow-flow-camera');
     const devControls = document.getElementById('dev-controls');
     const chkDevMode = document.getElementById('chk-dev-mode');
     const btnDevExport = document.getElementById('btn-dev-export');
 
-    if (!chkGrid || !chkComponentPosition || !chkAnimateComponents || !chkFollowFlowCamera || !devControls || !chkDevMode || !btnDevExport) {
+    if (!devControls || !chkDevMode || !btnDevExport) {
         console.warn('view panel controls not found');
         return;
     }
 
-    LABEL.gridLabelsGroup.visible = false;
-    LABEL.yAxisGroup.visible = false;
-    gridHelper.visible = false;
-    chkGrid.checked = false;
-    chkComponentPosition.checked = !!modelVisualSettings.showComponentPosition;
-    chkAnimateComponents.checked = !!modelVisualSettings.animateComponents;
-    chkFollowFlowCamera.checked = !!modelVisualSettings.followFlowCamera;
+    setGridVisible(false);
     chkDevMode.checked = false;
     setDeveloperModeEnabled(false);
     devControls.style.display = modelDeveloperSettings.showDeveloperControls ? 'inline-flex' : 'none';
@@ -4528,33 +4741,6 @@ function initViewPanel() {
         chkDevMode.checked = false;
         setDeveloperModeEnabled(false);
     }
-
-    chkGrid.addEventListener('change', () => {
-        const visible = chkGrid.checked;
-
-        if (gridHelper) {
-            gridHelper.visible = visible;
-        }
-        if (LABEL.gridLabelsGroup) {
-            LABEL.gridLabelsGroup.visible = visible;
-        }
-        if (LABEL.yAxisGroup) {
-            LABEL.yAxisGroup.visible = visible;
-        }
-    });
-
-    chkComponentPosition.addEventListener('change', () => {
-        modelVisualSettings.showComponentPosition = chkComponentPosition.checked;
-        updateCurrentConnectionMarker();
-    });
-
-    chkAnimateComponents.addEventListener('change', () => {
-        modelVisualSettings.animateComponents = chkAnimateComponents.checked;
-    });
-
-    chkFollowFlowCamera.addEventListener('change', () => {
-        modelVisualSettings.followFlowCamera = chkFollowFlowCamera.checked;
-    });
 
     chkDevMode.addEventListener('change', () => {
         setDeveloperModeEnabled(chkDevMode.checked);
@@ -4573,23 +4759,10 @@ function initViewPanel() {
  * Synchronizes view panel controls with current model/settings state.
  */
 function syncViewPanelStateFromSettings() {
-    const chkComponentPosition = document.getElementById('chk-view-component-position');
-    const chkAnimateComponents = document.getElementById('chk-view-animate-components');
-    const chkFollowFlowCamera = document.getElementById('chk-view-follow-flow-camera');
     const devControls = document.getElementById('dev-controls');
     const chkDevMode = document.getElementById('chk-dev-mode');
 
-    if (chkComponentPosition) {
-        chkComponentPosition.checked = !!modelVisualSettings.showComponentPosition;
-    }
-
-    if (chkAnimateComponents) {
-        chkAnimateComponents.checked = !!modelVisualSettings.animateComponents;
-    }
-
-    if (chkFollowFlowCamera) {
-        chkFollowFlowCamera.checked = !!modelVisualSettings.followFlowCamera;
-    }
+    syncSettingsDialogState();
 
     if (devControls) {
         devControls.style.display = modelDeveloperSettings.showDeveloperControls ? 'inline-flex' : 'none';
@@ -4607,6 +4780,15 @@ function syncViewPanelStateFromSettings() {
     }
 
     updateDeveloperModeUI();
+}
+
+function setGridVisible(visible) {
+    if (gridHelper) gridHelper.visible = visible;
+    if (LABEL.gridLabelsGroup) LABEL.gridLabelsGroup.visible = visible;
+    if (LABEL.yAxisGroup) LABEL.yAxisGroup.visible = visible;
+
+    const dialogToggle = document.getElementById('setting-show-grid');
+    if (dialogToggle) dialogToggle.checked = visible;
 }
 
 /**
@@ -4635,7 +4817,7 @@ function updateFlowControlButtons() {
         btnEnd.disabled = true;
     } else {
         btnPlay.disabled = !hasConnections;
-        btnStop.disabled = !(pendingDataFlow || (modelVisualSettings.followFlowCamera && activeFlows.length > 0));
+        btnStop.disabled = !(pendingDataFlow || (getSetting('followFlowCamera') && activeFlows.length > 0));
         btnStart.disabled = !hasConnections;
         btnPrev.disabled = !hasConnections;
         btnReplay.disabled = !hasConnections || currentSelectedConnectionIndex < 0;
@@ -4780,23 +4962,24 @@ function getFlowPathOcclusion(position, pathPoints, occluders) {
  */
 function buildCameraControls() {
     const container = document.getElementById('cameraControls');
+    const settingsContainer = document.getElementById('settings-camera-controls');
     if (!container) {
         console.warn('cameraControls container not found');
         return;
     }
 
     container.innerHTML = 'View: ';
+    if (settingsContainer) settingsContainer.innerHTML = '';
 
     cameraViews.forEach(view => {
-        const btn = document.createElement('button');
-        btn.textContent = view.label;
-        btn.dataset.viewId = view.id;
-
-        btn.addEventListener('click', () => {
-            setCameraView(view.id, true);
+        [container, settingsContainer].filter(Boolean).forEach(target => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = view.label;
+            button.dataset.viewId = view.id;
+            button.addEventListener('click', () => setCameraView(view.id, true));
+            target.appendChild(button);
         });
-
-        container.appendChild(btn);
     });
     updateCameraControlsUI();
 }
@@ -4805,10 +4988,7 @@ function buildCameraControls() {
  * Updates the camera control buttons to highlight the active view.
  */
 function updateCameraControlsUI() {
-    const container = document.getElementById('cameraControls');
-    if (!container) return;
-
-    const buttons = container.querySelectorAll('button');
+    const buttons = document.querySelectorAll('#cameraControls button, #settings-camera-controls button');
     buttons.forEach(btn => {
         if (btn.dataset.viewId === currentCameraViewId) {
             btn.classList.add('active');
@@ -4830,7 +5010,7 @@ function setCameraView(viewId, animate = true) {
         return;
     }
 
-    if (modelVisualSettings.followFlowCamera || pendingDataFlow) {
+    if (getSetting('followFlowCamera') || pendingDataFlow) {
         stopAutoPlay();
     }
     cameraAnimation = null;
@@ -4869,7 +5049,7 @@ renderer.domElement.addEventListener('pointerup', onDeveloperPointerUp);
 renderer.domElement.addEventListener('pointercancel', onDeveloperPointerUp);
 renderer.domElement.addEventListener('dblclick', onModuleComponentDoubleClick);
 controls.addEventListener('start', () => {
-    if (modelVisualSettings.followFlowCamera || pendingDataFlow) {
+    if (getSetting('followFlowCamera') || pendingDataFlow) {
         stopAutoPlay();
         cameraAnimation = null;
     }
@@ -4946,6 +5126,7 @@ await LABEL.loadFontAsync();          // Font laden
 await loadAdditionalModelFilesFromProperties();
 initModelListToggle();
 initImpressumDialog();
+initSettingsDialog();
 buildCameraControls();
 setCameraView(currentCameraViewId, false);
 

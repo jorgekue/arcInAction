@@ -218,9 +218,9 @@ Pro ConnectionGroup werden u.a. definiert:
 - die Information, ob die Gruppe beim Laden des Modells initial **aktiv** sein soll (`active`),
 - optional eine **Farbe**, die für alle Verbindungen dieser Gruppe verwendet wird.
 
-Viele Viewer-Verhaltensweisen haben **Standardeinstellungen**, können aber in der Modell-Datei unter `settings` explizit vorbelegt werden.
+Viewer-Einstellungen wie Kameraverhalten, Positionsmarkierungen und Komponentenanimation sowie die Sprachausgabe-Konfiguration werden im Settings-Dialog verwaltet. Sie werden im Browser unter `localStorage` gespeichert und gelten modellübergreifend.
 
-> Details zu allen verfügbaren Settings, Defaults und Optionen siehe **Modellierungsanleitung für aia‑Modelle** in den Referenzen.
+Modellbezogene Settings wie `flowSpeed` und `selectConnectionsAndComponents` bleiben in der Modell-Datei konfigurierbar. Details siehe **Modellierungsanleitung für aia‑Modelle** in den Referenzen.
 
 ![Connections Groups](/doc/img/connectionsGroups.gif)
 
@@ -262,7 +262,7 @@ Damit kann man:
 
 ## Steuerung der Datenfluss‑Animation
 
-Bei aktiviertem `followFlowCamera` richtet der Viewer die Kamera automatisch auf jede Verbindung aus und fährt vor dem Datenfluss mit der unter `flowCameraTransitionDuration` konfigurierten Dauer weich in die Ansicht.
+Ist **Follow flow camera** im Settings-Dialog aktiviert, richtet der Viewer die Kamera automatisch auf jede Verbindung aus und fährt vor dem Datenfluss in die Ansicht. Die Übergangsdauer wird ebenfalls dort eingestellt.
 
 Die Animation wird über das Schalterfeld **unten mittig** gesteuert:
 

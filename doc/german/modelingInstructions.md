@@ -394,10 +394,6 @@ Globale Datenfluss‑Einstellungen (optional, im JSON‑Root unter `settings`):
   "settings": {
     "flowDurationMin": 3,
     "flowSpeed": 2.5,
-    "followFlowCamera": false,
-    "flowCameraTransitionDuration": 1.5,
-    "animateComponents": false,
-    "showComponentPosition": false,
     "selectConnectionsAndComponents": false,
     "developerMode": false,
     "undoRedoDepth": 50
@@ -407,22 +403,44 @@ Globale Datenfluss‑Einstellungen (optional, im JSON‑Root unter `settings`):
 
 - `settings.flowDurationMin` (number): Mindestdauer der Animation in Sekunden. Verhindert, dass sehr kurze Verbindungen zu schnell animieren.
 - `settings.flowSpeed` (number): Animationsgeschwindigkeit in Grid‑Einheiten pro Sekunde.
-- `settings.followFlowCamera` (boolean): Aktiviert automatische Perspektive und Kameraabstand pro Verbindung. Default ist `false`. Die Berechnung berücksichtigt Komponentenabmessungen, Verbindungspfad und Bildschirmformat sowie Selbstaufrufe und senkrechte Verbindungen. Vor dem Datenfluss wird die Kamera weich eingestellt; während des Datenflusses bleibt sie stehen. Bei bereits passender Ansicht startet der Fluss direkt. Stop, Schritt-, Modell- und Gruppenwechsel brechen vorgemerkte Starts ab. Manuelle Kamerabedienung oder die Wahl einer festen Perspektive unterbricht die Wiedergabe; ein erneuter Wiedergabestart aktiviert die automatische Kameraführung wieder.
-- `settings.flowCameraTransitionDuration` (number): Dauer der automatischen Kamerafahrt vor dem Datenfluss in Sekunden. Default ist `1.5`; nur positive Werte werden berücksichtigt.
-- `settings.animateComponents` (boolean): Aktiviert/deaktiviert das Hervorheben aktiver Komponenten während der Datenfluss‑Animation. Default ist `false`.
-- `settings.showComponentPosition` (boolean): Aktiviert/deaktiviert die visuelle Positionsmarkierung der aktuell fokussierten Komponenten. Default ist `false`.
 - `settings.selectConnectionsAndComponents` (boolean, optional): Steuert den Sichtbarkeitsmodus im ConnectionGroups‑Panel. Bei `false` (Default) werden nur Verbindungslinien/-pfeile anhand aktiver Gruppen gefiltert. Bei `true` werden zusätzlich alle Komponenten ausgeblendet, die in den aktuell aktiven Gruppen nicht verwendet werden.
 - `settings.developerMode` (boolean): Blendet den Developer‑Mode im Viewer ein/aus. Der Schalter ist standardmäßig nicht sichtbar und wird nur bei explizitem `true` eingeblendet.
 - `settings.undoRedoDepth` (number): Maximale Historientiefe für Undo/Redo im interaktiven Edit‑Modus. Default ist `50`.
 
-Die mitwandernden Datenfluss-Labels behalten beim Zoomen eine konstante Bildschirmgröße mit etwa 39 Pixeln Zeilenhöhe und 8 Pixeln Abstand oberhalb der Kugel. Das gilt unabhängig von `followFlowCamera`. Komponenten- und Ebenenbeschriftungen sowie die im Modell angegebenen Texte und Zeilenumbrüche bleiben unverändert.
+Die automatische Kameraführung und ihre Übergangsdauer werden im Settings-Dialog als Viewer-Einstellungen konfiguriert und in `localStorage` gespeichert. Das gilt ebenso für Positionsmarkierungen, Komponentenanimation und die Sprachausgabe-Konfiguration. Die Sprachausgabe selbst ist davon nicht umfasst.
 
-Bei `followFlowCamera` werden zwei gegenüberliegende schräge Ansichten anhand von 32 Stichproben entlang des Verbindungspfads auf Verdeckung durch sichtbare Komponenten verglichen. Die gegenüberliegende Seite wird nur gewählt, wenn sie mindestens drei Stichproben weniger verdeckt. Beschriftungen werden nicht als Hindernisse berücksichtigt. Das reduziert Verdeckungen, garantiert aber keinen vollständig freien Blick und prüft nicht den Weg der Kamerafahrt.
+Die mitwandernden Datenfluss-Labels behalten beim Zoomen eine konstante Bildschirmgröße mit etwa 39 Pixeln Zeilenhöhe und 8 Pixeln Abstand oberhalb der Kugel. Komponenten- und Ebenenbeschriftungen sowie die im Modell angegebenen Texte und Zeilenumbrüche bleiben unverändert.
+
+Bei aktivierter automatischer Kameraführung werden zwei gegenüberliegende schräge Ansichten anhand von 32 Stichproben entlang des Verbindungspfads auf Verdeckung durch sichtbare Komponenten verglichen. Die gegenüberliegende Seite wird nur gewählt, wenn sie mindestens drei Stichproben weniger verdeckt. Beschriftungen werden nicht als Hindernisse berücksichtigt. Das reduziert Verdeckungen, garantiert aber keinen vollständig freien Blick und prüft nicht den Weg der Kamerafahrt.
+
+| Dialogeinstellung | Steuerelement | Default |
+| --- | --- | --- |
+| Show component position | Checkbox | Aus |
+| Animate components | Checkbox | Aus |
+| Follow flow camera | Checkbox | Aus |
+| Camera transition duration | Slider (0,1-5,0 s, Schritt 0,1) | 1,5 s |
+| Enable speech output | Checkbox | Aus |
+| Speech language | Deutsch / English | Browsersprache bei Englisch, sonst Deutsch |
+| Voice | Combo-Box | Browser-Standard; verfügbare Stimmen werden nach der Sprache gefiltert |
+| Speech rate | Slider (0,5-1,5, Schritt 0,1) | 1,0 |
+
+Die veralteten Modell-Settings `followFlowCamera`, `flowCameraTransitionDuration`, `animateComponents` und `showComponentPosition` werden vom arcInAction-Viewer ignoriert und können aus bestehenden Modellen entfernt werden.
+
+### Altmodell-Settings bereinigen
+
+Diese veralteten Schlüssel können aus dem `settings`-Objekt im Modell-Root entfernt werden:
+
+- `followFlowCamera`
+- `flowCameraTransitionDuration`
+- `animateComponents`
+- `showComponentPosition`
+
+Gültig bleiben die Modell-Settings `flowSpeed`, `flowDurationMin`, `selectConnectionsAndComponents`, `developerMode` und `undoRedoDepth`. Das Verbindungsattribut `flowDuration` wird weiterhin unterstützt.
 
 Hinweis zu Standardeinstellungen:
 
-- Alle oben genannten Defaults greifen nur, wenn das jeweilige Setting in der Modell‑Datei nicht gesetzt ist.
-- Mit einem expliziten Wert in `settings` kann der Default pro Modell gezielt überschrieben werden.
+- Alle oben genannten Modell-Defaults greifen nur, wenn das jeweilige Setting in der Modell‑Datei nicht gesetzt ist.
+- Mit einem expliziten Wert in `settings` kann ein Modell-Default gezielt überschrieben werden.
 
 Sichtbarkeitsmodus im Viewer‑UI:
 

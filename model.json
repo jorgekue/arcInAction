@@ -160,7 +160,9 @@
                     "order": 101,
                     "label": "user data1",
                     "id": "U1-UI1",
-                    "link": "interfacesInfos/interfaceInfo-U1-UI1.html"
+                    "link": "interfacesInfos/interfaceInfo-U1-UI1.html",
+                    "description_de": "Der Benutzer gibt seine Benutzerdaten über die Benutzeroberfläche ein.",
+                    "description_en": "The user enters their data through the user interface."
                 },
                 {
                     "from": "UI1",
@@ -182,7 +184,9 @@
                         }
                     ],
                     "id": "UI1-S1",
-                    "link": "interfacesInfos/interfaceInfo-UI1-S1.html"
+                    "link": "interfacesInfos/interfaceInfo-UI1-S1.html",
+                    "description_de": "Die Oberflächenkomponente leitet die Benutzerdaten an den Benutzerservice weiter.",
+                    "description_en": "The user interface component forwards the user data to the user service."
                 },
                 {
                     "from": "S1",
@@ -192,7 +196,9 @@
                     "order": 103,
                     "label": "user data",
                     "id": "S1-DB1",
-                    "link": "interfacesInfos/interfaceInfo-S1-DB1.html"
+                    "link": "interfacesInfos/interfaceInfo-S1-DB1.html",
+                    "description_de": "Die Benutzerdaten werden in der Kundendatenbank gespeichert.",
+                    "description_en": "The user data is stored in the customer database."
                 },
                 {
                     "from": "S1",
@@ -224,6 +230,9 @@
                         "printData": "user registration"
                     },
                     "link": "interfacesInfos/interfaceInfo-S1-M1.html"
+                    ,
+                    "description_de": "Der Benutzerservice sendet die Registrierungs-E-Mail an den Druckservice.",
+                    "description_en": "The user service sends the registration email to the print service."
                 },
                 {
                     "from": "M1",
@@ -242,7 +251,9 @@
                             "y": 0,
                             "z": 8
                         }
-                    ]
+                    ],
+                    "description_de": "Der Druckservice sendet die Registrierungs-E-Mail an den Benutzer.",
+                    "description_en": "The print service sends the registration email to the user."
                 }
             ]
         },

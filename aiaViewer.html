@@ -81,38 +81,37 @@
         <div id="cameraControls" class="view-panel-cameras">
             <!-- Camera view buttons inserted by JavaScript -->
         </div>
+        <button id="btn-settings-toggle" class="view-panel-button settings-toggle" type="button" title="Settings" aria-label="Settings" aria-expanded="false">&#9881;</button>
+    </div>
+
+    <!-- Developer controls remain available without widening the quick toolbar -->
+    <div id="dev-controls" class="view-panel-dev-controls">
         <label class="view-panel-item">
-            <input type="checkbox" id="chk-view-grid" />
-            <span>Show grid</span>
+            <input type="checkbox" id="chk-dev-mode" />
+            <span>Dev mode</span>
         </label>
-        <label class="view-panel-item">
-            <input type="checkbox" id="chk-view-component-position" />
-            <span>Show component position</span>
-        </label>
-        <label class="view-panel-item">
-            <input type="checkbox" id="chk-view-animate-components" />
-            <span>Animate components</span>
-        </label>
-        <label class="view-panel-item">
-            <input type="checkbox" id="chk-view-follow-flow-camera" />
-            <span>Follow flow camera</span>
-        </label>
-        <div id="dev-controls" class="view-panel-dev-controls">
-            <label class="view-panel-item">
-                <input type="checkbox" id="chk-dev-mode" />
-                <span>Dev mode</span>
-            </label>
-            <button id="btn-dev-export" class="view-panel-button" disabled>
-                Export JSON
-            </button>
-        </div>
-            <button id="btn-impressum" class="view-panel-button">
-                About
-            </button>
+        <button id="btn-dev-export" class="view-panel-button" disabled>
+            Export JSON
+        </button>
     </div>
 
     <!-- Main application script -->
     <script type="module" src="./js/viewer.js"></script>
+
+    <!-- Viewer settings dialog -->
+    <div id="settings-overlay" class="aia-settings-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-hidden="true">
+        <div class="aia-settings-dialog">
+            <div class="aia-settings-header">
+                <h2 id="settings-title">Settings</h2>
+                <button id="btn-settings-close" class="aia-settings-close" type="button" aria-label="Close settings">&times;</button>
+            </div>
+            <div id="settings-sections" class="aia-settings-body"></div>
+            <div class="aia-settings-actions">
+                <button id="btn-impressum" class="view-panel-button" type="button">About</button>
+                <button id="btn-settings-reset" type="button">Reset to defaults</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Info/Impressum overlay dialog -->
     <div id="impressum-overlay" class="aia-impressum-overlay" style="display: none;">
@@ -123,7 +122,7 @@
             </div>
             <div class="aia-impressum-body">
                 <p><strong>Program:</strong> architecture in action (aia)</p>
-                <p><strong>Version:</strong> 3.2</p>
+                <p><strong>Version:</strong> 3.3</p>
                 <p><strong>License:</strong> Apache License, Version 2.0</p>
 
                 <hr>

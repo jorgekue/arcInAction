@@ -222,6 +222,8 @@ Per ConnectionGroup, among other things, are defined:
 
 Initial visibility mode can optionally be configured in model root `settings` via `selectConnectionsAndComponents` (default: `false`).
 
+Viewer preferences such as camera view behavior, component markers and animation, and speech-output configuration are available in the Settings dialog. They are stored in browser `localStorage` and apply across loaded models.
+
 ![Connections Groups](/doc/img/connectionGroups.gif)
 
 _Image: Connections Groups._
@@ -267,7 +269,7 @@ This allows you to:
 
 ## Controlling the Data Flow Animation
 
-When `followFlowCamera` is enabled, the viewer automatically frames each connection and smoothly moves to that view before the data flow, using the duration configured by `flowCameraTransitionDuration`.
+When **Follow flow camera** is enabled in the Settings dialog, the viewer automatically frames each connection and moves to that view before the data flow. The transition duration is configured in the same dialog.
 
 The animation is controlled via the control panel **in the lower center**:
 
