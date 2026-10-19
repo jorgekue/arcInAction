@@ -2,12 +2,14 @@
 
 A 3D/4D visualization tool for software architectures that combines component diagrams with sequence diagrams through animated data flows.
 
-Current version: 3.2
+Current version: 3.4
 
 ## Release History
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 3.4 | 2026-10-19 | Synchronized speech output for data-flow playback: reads connection descriptions in the selected language and waits for narration and animation to finish before advancing. Voice, language, and speech rate are configurable; missing descriptions remain silent. |
+| 3.3 | 2026-10-17 | Central Settings dialog for viewer preferences and speech-output configuration; preferences persist across models in browser storage. |
 | 3.2 | 2026-10-12 | Automatic camera framing for data-flow playback: when enabled via `followFlowCamera`, the viewer selects a suitable view for each connection and transitions before playback; transition duration is configurable with `flowCameraTransitionDuration`. |
 | 3.1 | 2026-06-22 | Interface link support in connection details: `id` can reference local or remote documentation via optional `link` field (opens in new tab). Multi-file upload for module-linked model sets: upload multiple JSON files together and select the parent model that serves as the navigation entry point. Module files are resolved from the uploaded files first, with server fallback. |
 | 3.0 | 2026-06-08 | Module support for reusable model parts: drill-down into modules, module call selection, runtime parameter passing via connection `parameters`, and return navigation from module context. Sample models were extended and aligned for this feature (`model.json`, `modulePrint.json`). |
@@ -166,7 +168,6 @@ Notes:
 
 4. **View Controls**:
    - **Camera Views**: Switch between Isometric, Top, and Front views
-   - **Show grid**: Toggle grid display
    - **Connection Groups**: Enable/disable groups of connections
    - **Visibility Mode**: Choose `only connections` or `connections & components`
 

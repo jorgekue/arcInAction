@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>Sprachausgabe-Test</title>
+  <style>
+    body { font-family: sans-serif; background: #222; color: #eee; padding: 2rem; }
+    textarea { width: 30rem; height: 4rem; }
+    select, button { margin: 0.5rem 0.5rem 0.5rem 0; padding: 0.4rem 0.8rem; }
+  </style>
+</head>
+<body>
+  <h3>Sprachausgabe-Test</h3>
+  <textarea id="text">Meldeliste validieren und anreichern. Von KS nach MLPP.</textarea><br />
+  <select id="voice"></select>
+  <label>Tempo <input id="rate" type="range" min="0.5" max="1.5" step="0.1" value="1" /></label><br />
+  <button id="speak">Sprechen</button>
+  <button id="stop">Stopp</button>
+  <pre id="status"></pre>
+
+  <script>
+    const synth = window.speechSynthesis;
+    const voiceSelect = document.getElementById('voice');
+    const statusEl = document.getElementById('status');
+    const log = (m) => { statusEl.textContent += m + '\n'; };
+    // Referenz halten, sonst wird die Utterance in Chromium teils vorzeitig eingesammelt.
+    let current = null;
+
+    if (!synth) log('speechSynthesis wird von diesem Browser nicht unterstützt.');
+
+    function loadVoices() {
+      const voices = synth.getVoices();
+      voiceSelect.innerHTML = '';
+      voices.forEach((v, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${v.name} (${v.lang})`;
+        if (v.lang.startsWith('de')) opt.selected = true;
+        voiceSelect.appendChild(opt);
+      });
+      log(`${voices.length} Stimmen geladen`);
+    }
+    // Chromium/Edge laden die Stimmenliste asynchron.
+    synth.onvoiceschanged = loadVoices;
+    loadVoices();
+
+    document.getElementById('speak').onclick = () => {
+      // cancel() direkt vor speak() verschluckt die Ausgabe in manchen Browsern.
+      if (synth.speaking || synth.pending) {
+        synth.cancel();
+        setTimeout(speak, 100);
+      } else {
+        speak();
+      }
+    };
+
+    function speak() {
+      const u = new SpeechSynthesisUtterance(document.getElementById('text').value);
+      const voice = synth.getVoices()[voiceSelect.value];
+      if (voice) u.voice = voice;
+      u.lang = voice?.lang || 'de-DE';
+      u.rate = Number(document.getElementById('rate').value);
+      u.onstart = () => log('Start');
+      u.onend = () => log('Ende');
+      u.onerror = (e) => log('Fehler: ' + e.error);
+      current = u;
+      synth.speak(u);
+      log('speak() aufgerufen');
+    }
+    document.getElementById('stop').onclick = () => synth.cancel();
+  </script>
+</body>
+</html>

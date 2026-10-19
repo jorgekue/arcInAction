@@ -394,10 +394,6 @@ Global flow animation settings (optional, in JSON root under `settings`):
   "settings": {
     "flowDurationMin": 3,
     "flowSpeed": 2.5,
-    "followFlowCamera": false,
-    "flowCameraTransitionDuration": 1.5,
-    "animateComponents": false,
-    "showComponentPosition": false,
     "selectConnectionsAndComponents": false,
     "developerMode": false,
     "undoRedoDepth": 50
@@ -407,18 +403,40 @@ Global flow animation settings (optional, in JSON root under `settings`):
 
 - `settings.flowDurationMin` (number): Minimum animation duration in seconds. Prevents very short connections from animating too fast.
 - `settings.flowSpeed` (number): Animation speed in grid units per second.
-- `settings.followFlowCamera` (boolean): Enables automatic camera perspective and distance for each connection. Default is `false`.
-- `settings.flowCameraTransitionDuration` (number): Duration in seconds of the automatic camera movement before the data flow starts. Default is `1.5`; only positive values are considered.
-- `settings.animateComponents` (boolean): Enables/disables active component highlighting during data flow animations. Default is `false`.
-- `settings.showComponentPosition` (boolean): Enables/disables visual position highlighting for currently focused components. Default is `false`.
 - `settings.selectConnectionsAndComponents` (boolean, optional): Controls visibility mode for the connection groups panel. If `false` (default), only connection lines/arrows are filtered by active groups. If `true`, components not used by the currently active groups are also hidden.
 - `settings.developerMode` (boolean): Shows/hides developer mode controls in the viewer. The toggle is hidden by default and becomes visible only when explicitly set to `true`.
 - `settings.undoRedoDepth` (number): Maximum history depth for undo/redo in interactive edit mode. Default is `50`.
 
-Notes on defaults:
+Viewer preferences are managed in the Settings dialog and stored in browser `localStorage`, independently of the loaded model. This includes component-position markers, component animation, flow-camera following and its transition duration, and speech-output configuration. The speech options configure future speech output; they do not enable speech behavior by themselves.
 
-- All defaults listed above are only applied when the respective setting is not explicitly set in the model file.
-- With an explicit value in `settings`, the default can be overridden per model.
+| Settings dialog option | Control | Default |
+| --- | --- | --- |
+| Show component position | Checkbox | Off |
+| Animate components | Checkbox | Off |
+| Follow flow camera | Checkbox | Off |
+| Camera transition duration | Slider (0.1-5.0 s, 0.1 step) | 1.5 s |
+| Enable speech output | Checkbox | Off |
+| Speech language | Deutsch / English | Browser language when English, otherwise German |
+| Voice | Combo box | Browser default; available voices are filtered by speech language |
+| Speech rate | Slider (0.5-1.5, 0.1 step) | 1.0 |
+
+Legacy model keys `followFlowCamera`, `flowCameraTransitionDuration`, `animateComponents`, and `showComponentPosition` are ignored by the arcInAction viewer and can be removed from existing models.
+
+### Cleaning up legacy model settings
+
+Remove these obsolete keys when cleaning up a model's root `settings` object:
+
+- `followFlowCamera`
+- `flowCameraTransitionDuration`
+- `animateComponents`
+- `showComponentPosition`
+
+Keep the model settings `flowSpeed`, `flowDurationMin`, `selectConnectionsAndComponents`, `developerMode`, and `undoRedoDepth`. Connection-level `flowDuration` remains supported.
+
+Notes on model defaults:
+
+- Defaults listed above are applied when the respective model setting is not explicitly set.
+- With an explicit value in `settings`, a model setting can be overridden for that model.
 
 Connection visibility mode behavior in the viewer UI:
 

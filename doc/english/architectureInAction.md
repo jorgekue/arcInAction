@@ -222,6 +222,12 @@ Per ConnectionGroup, among other things, are defined:
 
 Initial visibility mode can optionally be configured in model root `settings` via `selectConnectionsAndComponents` (default: `false`).
 
+Viewer preferences such as camera view behavior, component markers and animation, and speech-output configuration are available in the Settings dialog. They are stored in browser `localStorage` and apply across loaded models.
+
+With speech output enabled, each data-flow step reads the connection description in the selected language. Missing or empty descriptions remain silent; there is no fallback to another language or the connection label. Voice and speech rate follow the Settings dialog.
+
+Narration starts with the data flow, after any automatic camera transition. Automatic playback advances only when both animation and narration have finished. Stop, step navigation, model changes, and module navigation cancel the current narration. Changing speech settings also cancels the current narration; the new settings apply to subsequent steps. If speech synthesis is unavailable or reports an error, animation continues without narration.
+
 ![Connections Groups](/doc/img/connectionGroups.gif)
 
 _Image: Connections Groups._
@@ -267,7 +273,7 @@ This allows you to:
 
 ## Controlling the Data Flow Animation
 
-When `followFlowCamera` is enabled, the viewer automatically frames each connection and smoothly moves to that view before the data flow, using the duration configured by `flowCameraTransitionDuration`.
+When **Follow flow camera** is enabled in the Settings dialog, the viewer automatically frames each connection and moves to that view before the data flow. The transition duration is configured in the same dialog.
 
 The animation is controlled via the control panel **in the lower center**:
 

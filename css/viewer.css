@@ -12,6 +12,8 @@ body {
     color: #fff;
     padding: 5px 8px;
     font-size: 12px;
+    line-height: 1.3;
+    max-width: 280px;
     z-index: 10;
 }
 
@@ -377,6 +379,35 @@ body {
     background: rgba(255, 255, 255, 0.3);
 }
 
+.settings-camera-controls {
+    display: flex;
+    gap: 6px;
+}
+
+.settings-camera-controls button {
+    min-width: 52px;
+    min-height: 32px;
+    border: 1px solid #666;
+    border-radius: 3px;
+    background: #242424;
+    color: #fff;
+    cursor: pointer;
+}
+
+.settings-camera-controls button.active {
+    border-color: #43b7a9;
+    background: #28544f;
+}
+
+.view-panel-button.settings-toggle {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 34px;
+    padding: 0;
+    font-size: 24px;
+    line-height: 1;
+}
+
 /* Info-Button optisch passend */
 .view-panel-button {
     margin: 0 2px;
@@ -395,9 +426,19 @@ body {
 }
 
 .view-panel-dev-controls {
+    position: absolute;
+    top: 52px;
+    left: 10px;
+    z-index: 30;
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-family: sans-serif;
+    font-size: 12px;
 }
 
 .module-call-overlay {
@@ -537,4 +578,160 @@ body {
   margin: 8px 0;
   border: none;
   border-top: 1px solid #ddd;
+}
+
+.aia-settings-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.58);
+}
+
+.aia-settings-dialog {
+    box-sizing: border-box;
+    width: min(520px, 100%);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    padding: 16px 18px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background: #161616;
+    color: #f4f4f4;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+    font: 14px/1.4 sans-serif;
+}
+
+.aia-settings-header,
+.aia-settings-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.aia-settings-header h2,
+.aia-settings-section h3 {
+    margin: 0;
+}
+
+.aia-settings-header h2 {
+    font-size: 18px;
+}
+
+.aia-settings-close {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #666;
+    border-radius: 3px;
+    background: #242424;
+    color: inherit;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.aia-settings-section {
+    display: grid;
+    gap: 12px;
+    padding: 16px 0;
+    border-bottom: 1px solid #414141;
+}
+
+.aia-settings-section h3 {
+    color: #a8d9d5;
+    font-size: 14px;
+}
+
+.aia-settings-checkbox,
+.aia-settings-select,
+.aia-settings-range {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 12px;
+}
+
+.aia-settings-checkbox {
+    grid-template-columns: 20px minmax(0, 1fr);
+}
+
+.aia-settings-camera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.aia-settings-checkbox input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+.aia-settings-select select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.aia-settings-select {
+    grid-template-columns: minmax(72px, 1fr) minmax(0, 280px);
+}
+
+.aia-settings-range input {
+    grid-column: 1;
+    width: 100%;
+    accent-color: #43b7a9;
+}
+
+.aia-settings-range output {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    min-width: 58px;
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.aia-settings-dialog button,
+.aia-settings-dialog select {
+    min-height: 32px;
+    border: 1px solid #666;
+    border-radius: 3px;
+    background: #242424;
+    color: inherit;
+}
+
+.aia-settings-actions {
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 14px;
+}
+
+.aia-settings-actions button {
+    padding: 4px 10px;
+    cursor: pointer;
+}
+
+@media (max-width: 640px) {
+    .view-panel-dev-controls {
+        top: 136px;
+    }
+
+    #view-panel {
+        top: 54px;
+        max-width: calc(100vw - 20px);
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .aia-settings-dialog {
+        padding: 14px;
+    }
 }
