@@ -270,7 +270,9 @@
                     "order": 201,
                     "label": "orders",
                     "id": "U1-UI1",
-                    "link": "interfacesInfos/interfaceInfo-U1-UI1.html"
+                    "link": "interfacesInfos/interfaceInfo-U1-UI1.html",
+                    "description_de": "Der Benutzer wählt einzelne Artikel aus und sendet dann die Bestellinformationen als Auftrag.",
+                    "description_en": "The user selects individual items and then sends the order information as an order."
                 },
                 {
                     "from": "UI1",
@@ -292,7 +294,9 @@
                         }
                     ],
                     "id": "UI1-S2",
-                    "link": "interfacesInfos/interfaceInfo-UI1-S2.html"
+                    "link": "interfacesInfos/interfaceInfo-UI1-S2.html",
+                    "description_de": "Die Oberflächenkomponente sendet die Bestellinformationen an den Bestellservice.",
+                    "description_en": "The user interface component sends the order information to the order service."
                 },
                 {
                     "from": "S2",
@@ -302,7 +306,9 @@
                     "order": 203,
                     "label": "orders",
                     "id": "S2-DB2",
-                    "link": "interfacesInfos/interfaceInfo-S2-DB2.html"
+                    "link": "interfacesInfos/interfaceInfo-S2-DB2.html",
+                    "description_de": "Der Bestellservice speichert die Bestellinformationen in seiner Datenbank.",
+                    "description_en": "The order service stores the order information in the database."
                 },
                 {
                     "from": "S2",
@@ -330,7 +336,10 @@
                         }
                     ],
                     "id": "S2-Q1",
-                    "link": "interfacesInfos/interfaceInfo-S2-Q1.html"
+                    "link": "interfacesInfos/interfaceInfo-S2-Q1.html",
+                    "description_de": "Der Bestellservice stellt die Bestellnachricht zur weiteren asynchronen Verarbeitung in die Auftragswarteschlange.",
+                    "description_en": "The order service places the order message into the order queue for further asynchronous processing."
+                    
                 },
                 {
                     "from": "S2",
@@ -361,7 +370,9 @@
                         "visibleOrderService": true,
                         "printData": "ordering"
                     },
-                    "link": "interfacesInfos/interfaceInfo-S2-M1.html"
+                    "link": "interfacesInfos/interfaceInfo-S2-M1.html",
+                    "description_de": "Der Bestellservice übergibt die Bestellinformationen an das Druckmodul.",
+                    "description_en": "The order service passes the order information to the print module."
                 },
                 {
                     "from": "M1",
@@ -380,7 +391,10 @@
                             "z": 8
                         }
                     ],
-                    "link": "interfacesInfos/interfaceInfo-M1-U1.html"
+                    "link": "interfacesInfos/interfaceInfo-M1-U1.html",
+                    "description_de": "Das Druckmodul sendet eine Bestätigung mit den Bestellinformationen per E-Mail an den Benutzer.",
+                    "description_en": "The print module sends a confirmation with the order information to the user via email."
+                    
                 }
             ]
         },
@@ -417,7 +431,9 @@
                         }
                     ],
                     "id": "SCHED1-S3",
-                    "link": "interfacesInfos/interfaceInfo-SCHED1-S3.html"
+                    "link": "interfacesInfos/interfaceInfo-SCHED1-S3.html",
+                    "description_de": "Der Scheduler triggert den Zahlungsdienst zur Verarbeitung offener Aufträge an.",
+                    "description_en": "The scheduler triggers the payment service to process pending orders."
                 },
                 {
                     "from": "S3",
@@ -447,7 +463,10 @@
                         }
                     ],
                     "id": "S3-Q1",
-                    "link": "interfacesInfos/interfaceInfo-S3-Q1.html"
+                    "link": "interfacesInfos/interfaceInfo-S3-Q1.html",
+                    "description_de": "Der Zahlungsdienst fragt die offenen Aufträge in der Warteschlange ab.",
+                    "description_en": "The payment service queries the pending orders in the queue."    
+                    
                 }
             ]
         }

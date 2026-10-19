@@ -4127,6 +4127,7 @@ function createDataFlowOnConnection(connObject, options = {}) {
         direction,
         activeComponentIds
     });
+    startConnectionSpeech(conn);
     updateFlowControlButtons();
 }
 
@@ -4358,6 +4359,71 @@ function syncSettingsDialogState() {
 let speechVoices = [];
 let speechVoicesLoaded = false;
 let speechAvailable = true;
+let currentSpeech = null;
+let speechStartTimer = null;
+let speechCancelledAt = -Infinity;
+
+function cancelConnectionSpeech() {
+    const hadSpeech = currentSpeech !== null;
+    currentSpeech = null;
+    window.clearTimeout(speechStartTimer);
+    speechStartTimer = null;
+    if (hadSpeech) {
+        speechCancelledAt = Date.now();
+        window.speechSynthesis?.cancel();
+    }
+    updateFlowControlButtons();
+}
+
+function startConnectionSpeech(connection) {
+    cancelConnectionSpeech();
+    const synthesis = window.speechSynthesis;
+    const language = getSetting('speechLanguage');
+    const description = connection?.[`description_${language}`];
+    if (!getSetting('speechEnabled') || !synthesis ||
+        typeof window.SpeechSynthesisUtterance !== 'function' ||
+        typeof description !== 'string' || !description.trim()) return;
+
+    try {
+        const utterance = new window.SpeechSynthesisUtterance(description.trim());
+        const voices = synthesis.getVoices();
+        const voice = voices.find(candidate => (candidate.voiceURI || candidate.name) === getSetting('speechVoice') &&
+            candidate.lang?.toLowerCase().startsWith(language));
+        utterance.lang = language === 'en' ? 'en-US' : 'de-DE';
+        if (voice) {
+            utterance.voice = voice;
+            utterance.lang = voice.lang;
+        }
+        utterance.rate = getSetting('speechRate');
+        const finish = () => {
+            if (currentSpeech !== utterance) return;
+            currentSpeech = null;
+            updateFlowControlButtons();
+        };
+        utterance.onend = finish;
+        utterance.onerror = finish;
+        currentSpeech = utterance;
+        const speak = () => {
+            speechStartTimer = null;
+            if (currentSpeech !== utterance) return;
+            try {
+                synthesis.speak(utterance);
+            } catch (error) {
+                finish();
+            }
+        };
+        if (synthesis.speaking || synthesis.pending || Date.now() - speechCancelledAt < 100) {
+            if (synthesis.speaking || synthesis.pending) synthesis.cancel();
+            speechStartTimer = window.setTimeout(speak, 100);
+        } else {
+            speak();
+        }
+    } catch (error) {
+        cancelConnectionSpeech();
+    }
+}
+
+window.addEventListener('pagehide', cancelConnectionSpeech);
 
 function refreshSpeechVoiceOptions() {
     const voiceSelect = document.getElementById('setting-speech-voice');
@@ -4561,6 +4627,7 @@ function initSettingsDialog() {
                     ? Number(event.currentTarget.value)
                     : event.currentTarget.value;
             setSetting(setting.key, value);
+            if (setting.section === 'speech') cancelConnectionSpeech();
             if (setting.key === 'speechLanguage') refreshSpeechVoiceOptions();
             if (setting.key === 'showComponentPosition') updateCurrentConnectionMarker();
             syncSettingsDialogState();
@@ -4573,6 +4640,7 @@ function initSettingsDialog() {
 
     resetButton.addEventListener('click', () => {
         resetSettings();
+        cancelConnectionSpeech();
         setGridVisible(false);
         setCameraView('iso', true);
         updateCurrentConnectionMarker();
@@ -4817,7 +4885,7 @@ function updateFlowControlButtons() {
         btnEnd.disabled = true;
     } else {
         btnPlay.disabled = !hasConnections;
-        btnStop.disabled = !(pendingDataFlow || (getSetting('followFlowCamera') && activeFlows.length > 0));
+        btnStop.disabled = !(currentSpeech || pendingDataFlow || (getSetting('followFlowCamera') && activeFlows.length > 0));
         btnStart.disabled = !hasConnections;
         btnPrev.disabled = !hasConnections;
         btnReplay.disabled = !hasConnections || currentSelectedConnectionIndex < 0;
@@ -5361,7 +5429,7 @@ function updateAutoPlay(delta, hasRunningFlows) {
     if (!flowController.isPlaying) return;
 
     // If a flow is still running, wait
-    if (hasRunningFlows || pendingDataFlow) return;
+    if (hasRunningFlows || pendingDataFlow || currentSpeech) return;
 
     // If all connections are done, stop
     if (currentConnectionIndex >= connectionSequence.length) {
@@ -5385,6 +5453,7 @@ function updateAutoPlay(delta, hasRunningFlows) {
  */
 function stopAllFlows() {
     cancelPendingFlowCamera();
+    cancelConnectionSpeech();
     for (const flow of activeFlows) {
         scene.remove(flow.object3D);
         deactivateComponentsForFlow(flow.activeComponentIds);

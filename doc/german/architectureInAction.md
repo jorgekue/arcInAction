@@ -220,6 +220,10 @@ Pro ConnectionGroup werden u.a. definiert:
 
 Viewer-Einstellungen wie Kameraverhalten, Positionsmarkierungen und Komponentenanimation sowie die Sprachausgabe-Konfiguration werden im Settings-Dialog verwaltet. Sie werden im Browser unter `localStorage` gespeichert und gelten modellübergreifend.
 
+Bei aktivierter Sprachausgabe liest jeder Datenflussschritt die Verbindungsbeschreibung in der eingestellten Sprache vor. Fehlende oder leere Beschreibungen bleiben stumm; es gibt keinen Fallback auf eine andere Sprache oder das Verbindungslabel. Stimme und Sprechtempo entsprechen den Einstellungen im Settings-Dialog.
+
+Die Ansage beginnt mit dem Datenfluss, nach einer eventuellen automatischen Kamerafahrt. Die automatische Wiedergabe wechselt erst weiter, wenn Animation und Ansage beendet sind. Stopp, Schrittnavigation, Modellwechsel und Modulnavigation brechen die aktuelle Ansage ab. Auch das Ändern der Spracheinstellungen bricht die aktuelle Ansage ab; die neuen Einstellungen gelten ab dem nächsten Schritt. Ist die Sprachausgabe nicht verfügbar oder meldet sie einen Fehler, läuft die Animation ohne Ansage weiter.
+
 Modellbezogene Settings wie `flowSpeed` und `selectConnectionsAndComponents` bleiben in der Modell-Datei konfigurierbar. Details siehe **Modellierungsanleitung für aia‑Modelle** in den Referenzen.
 
 ![Connections Groups](/doc/img/connectionsGroups.gif)
